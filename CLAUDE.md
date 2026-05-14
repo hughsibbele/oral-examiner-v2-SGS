@@ -19,7 +19,7 @@ The canonical plan lives in [super-grader's planning folder](../../Super%20Grade
 
 ## Status
 
-See [`../BUILD_PLAN.md`](../BUILD_PLAN.md) for ecosystem-wide milestones and current state. M2b covers the remaining Oral Examiner work (template editor, branded-card install, roster sync, Gemini Live, exam flow, super-grader webhook).
+See [`../BUILD_PLAN.md`](../BUILD_PLAN.md) ([on GitHub](https://github.com/hughsibbele/super-grader-suite/blob/main/BUILD_PLAN.md)) for ecosystem-wide milestones and current state. M2b covers the remaining Oral Examiner work (template editor, branded-card install, roster sync, Gemini Live, exam flow, super-grader webhook).
 
 ## Gotchas worth remembering
 
