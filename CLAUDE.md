@@ -17,16 +17,9 @@ The canonical plan lives in [super-grader's planning folder](../../Super%20Grade
 - `is_admin()` is `SECURITY DEFINER` to avoid RLS recursion (HAH pattern, AI Doc adopted).
 - `_arg` underscore-prefixed args/vars are intentional placeholders for not-yet-consumed plumbing; eslint warns are suppressed for that pattern.
 
-## Phase 1 + 2a — done; what's still deferred
+## Status
 
-Phase 1 + Phase 2 first chunk are live and browser-verified — see `BUILD_PLAN.md` for the inventory. Still intentionally skipped:
-
-- **Gemini Live wiring** — Phase 3 concern, requires a real exam template to test against.
-- **Branded card install path** + **template editor** + **roster sync** — Phase 2 second chunk.
-- **Sentry instrumentation** — env vars wired in `.env.example`, but `instrumentation.ts` not written. Add when telemetry actually needed.
-- **Test suites** — anonymizer + crypto have battle-tested counterparts in super-grader; bring tests over once the schemas stabilize.
-- **`/admin/retention` panel** — UI deferred; data model + RLS in place so it can land later.
-- **Symlink `apps/teacher/.env.local` to workspace-root `.env.local`** (super-grader pattern). Not needed until packages need env vars.
+See [`../BUILD_PLAN.md`](../BUILD_PLAN.md) for ecosystem-wide milestones and current state. M2b covers the remaining Oral Examiner work (template editor, branded-card install, roster sync, Gemini Live, exam flow, super-grader webhook).
 
 ## Gotchas worth remembering
 
