@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* EHS brand palette — adapted from AI Documenter v2's globals.css.
+   Maroon for primary, dark blue for secondary, paper/ink for surfaces. */
+:root {
+  --maroon:        #7a1e46;
+  --maroon-dark:   #5a1535;
+  --cool-gray:     #54565b;
+  --light-blue:    #c4dceb;
+  --dark-blue:     #006890;
+  --dark-blue-dark:#004f6e;
+  --paper:         #fafaf7;
+  --ink:           #1a1a1a;
+  --rule:          #d8d6cf;
+  --muted:         #76746e;
+}
+
+@theme inline {
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-maroon: var(--maroon);
+  --color-maroon-dark: var(--maroon-dark);
+  --color-cool-gray: var(--cool-gray);
+  --color-light-blue: var(--light-blue);
+  --color-dark-blue: var(--dark-blue);
+  --color-dark-blue-dark: var(--dark-blue-dark);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-rule: var(--rule);
+  --color-muted: var(--muted);
+  --font-display: "Lora", Georgia, "Times New Roman", serif;
+  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+::selection { background: var(--light-blue); color: var(--ink); }
+
+a { color: var(--dark-blue); text-underline-offset: 3px; }
+a:hover { color: var(--dark-blue-dark); }
+
+.heading {
+  font-family: var(--font-display);
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.muted { color: var(--muted); }
+.rule  { border-color: var(--rule); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.4rem 0.85rem;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 80ms, color 80ms, background 80ms;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--maroon);
+  color: var(--maroon);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--maroon);
+  color: var(--paper);
+  border-color: var(--maroon);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--maroon-dark);
+  color: var(--paper);
+  border-color: var(--maroon-dark);
+}
+
+.surface {
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}

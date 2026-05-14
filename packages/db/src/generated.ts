@@ -1,0 +1,665 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  public: {
+    Tables: {
+      admins: {
+        Row: {
+          created_at: string
+          created_by_email: string | null
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_email?: string | null
+          email: string
+        }
+        Update: {
+          created_at?: string
+          created_by_email?: string | null
+          email?: string
+        }
+        Relationships: []
+      }
+      canvas_assignment_cache: {
+        Row: {
+          canvas_assignment_id: string
+          canvas_course_id: string
+          last_synced_at: string
+          payload: Json
+          teacher_id: string
+        }
+        Insert: {
+          canvas_assignment_id: string
+          canvas_course_id: string
+          last_synced_at?: string
+          payload: Json
+          teacher_id: string
+        }
+        Update: {
+          canvas_assignment_id?: string
+          canvas_course_id?: string
+          last_synced_at?: string
+          payload?: Json
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_assignment_cache_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canvas_course_cache: {
+        Row: {
+          canvas_course_id: string
+          last_synced_at: string
+          payload: Json
+          teacher_id: string
+        }
+        Insert: {
+          canvas_course_id: string
+          last_synced_at?: string
+          payload: Json
+          teacher_id: string
+        }
+        Update: {
+          canvas_course_id?: string
+          last_synced_at?: string
+          payload?: Json
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_course_cache_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_install_policies: {
+        Row: {
+          auto_install_new_assignments: boolean
+          canvas_course_id: string
+          created_at: string
+          default_exam_template_id: string | null
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_install_new_assignments?: boolean
+          canvas_course_id: string
+          created_at?: string
+          default_exam_template_id?: string | null
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_install_new_assignments?: boolean
+          canvas_course_id?: string
+          created_at?: string
+          default_exam_template_id?: string | null
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_install_policies_default_exam_template_id_fkey"
+            columns: ["default_exam_template_id"]
+            isOneToOne: false
+            referencedRelation: "exam_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_install_policies_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_rosters: {
+        Row: {
+          canvas_course_id: string
+          last_synced_at: string
+          students: Json
+          teacher_id: string
+        }
+        Insert: {
+          canvas_course_id: string
+          last_synced_at?: string
+          students?: Json
+          teacher_id: string
+        }
+        Update: {
+          canvas_course_id?: string
+          last_synced_at?: string
+          students?: Json
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_rosters_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_sessions: {
+        Row: {
+          audio_url: string | null
+          call_duration_sec: number | null
+          canvas_draft_comment_id: string | null
+          canvas_submission_id: string | null
+          completed_at: string | null
+          created_at: string
+          eval_text: string | null
+          exam_template_id: string
+          id: string
+          selected_questions: Json | null
+          state: Database["public"]["Enums"]["exam_session_state"]
+          student_id: string
+          student_summary: string | null
+          super_grader_post_status: Database["public"]["Enums"]["super_grader_post_status"]
+          super_grader_response: Json | null
+          transcript: Json | null
+        }
+        Insert: {
+          audio_url?: string | null
+          call_duration_sec?: number | null
+          canvas_draft_comment_id?: string | null
+          canvas_submission_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          eval_text?: string | null
+          exam_template_id: string
+          id?: string
+          selected_questions?: Json | null
+          state?: Database["public"]["Enums"]["exam_session_state"]
+          student_id: string
+          student_summary?: string | null
+          super_grader_post_status?: Database["public"]["Enums"]["super_grader_post_status"]
+          super_grader_response?: Json | null
+          transcript?: Json | null
+        }
+        Update: {
+          audio_url?: string | null
+          call_duration_sec?: number | null
+          canvas_draft_comment_id?: string | null
+          canvas_submission_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          eval_text?: string | null
+          exam_template_id?: string
+          id?: string
+          selected_questions?: Json | null
+          state?: Database["public"]["Enums"]["exam_session_state"]
+          student_id?: string
+          student_summary?: string | null
+          super_grader_post_status?: Database["public"]["Enums"]["super_grader_post_status"]
+          super_grader_response?: Json | null
+          transcript?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_sessions_exam_template_id_fkey"
+            columns: ["exam_template_id"]
+            isOneToOne: false
+            referencedRelation: "exam_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_templates: {
+        Row: {
+          archived_at: string | null
+          canvas_assignment_id: string
+          canvas_course_id: string
+          created_at: string
+          duration_max_sec: number
+          duration_min_sec: number
+          exam_token: string
+          id: string
+          name: string
+          question_bank: Json
+          reference_texts: Json
+          rubric_version: string
+          teacher_id: string
+          topic_context: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          canvas_assignment_id: string
+          canvas_course_id: string
+          created_at?: string
+          duration_max_sec?: number
+          duration_min_sec?: number
+          exam_token: string
+          id?: string
+          name: string
+          question_bank?: Json
+          reference_texts?: Json
+          rubric_version?: string
+          teacher_id: string
+          topic_context?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          canvas_assignment_id?: string
+          canvas_course_id?: string
+          created_at?: string
+          duration_max_sec?: number
+          duration_min_sec?: number
+          exam_token?: string
+          id?: string
+          name?: string
+          question_bank?: Json
+          reference_texts?: Json
+          rubric_version?: string
+          teacher_id?: string
+          topic_context?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_templates_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gemini_usage_daily: {
+        Row: {
+          date: string
+          denials: number
+          live_minutes: number
+          teacher_id: string
+          text_calls: number
+          updated_at: string
+        }
+        Insert: {
+          date?: string
+          denials?: number
+          live_minutes?: number
+          teacher_id: string
+          text_calls?: number
+          updated_at?: string
+        }
+        Update: {
+          date?: string
+          denials?: number
+          live_minutes?: number
+          teacher_id?: string
+          text_calls?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gemini_usage_daily_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompts: {
+        Row: {
+          body: string
+          id: string
+          key: string
+          purpose: Database["public"]["Enums"]["prompt_purpose"]
+          scope: Database["public"]["Enums"]["prompt_scope"]
+          updated_at: string
+          updated_by_email: string | null
+          version: number
+        }
+        Insert: {
+          body: string
+          id?: string
+          key: string
+          purpose: Database["public"]["Enums"]["prompt_purpose"]
+          scope: Database["public"]["Enums"]["prompt_scope"]
+          updated_at?: string
+          updated_by_email?: string | null
+          version?: number
+        }
+        Update: {
+          body?: string
+          id?: string
+          key?: string
+          purpose?: Database["public"]["Enums"]["prompt_purpose"]
+          scope?: Database["public"]["Enums"]["prompt_scope"]
+          updated_at?: string
+          updated_by_email?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          anon_token: string
+          auth_user_id: string | null
+          canvas_user_id: string
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+        }
+        Insert: {
+          anon_token: string
+          auth_user_id?: string | null
+          canvas_user_id: string
+          created_at?: string
+          display_name: string
+          email: string
+          id?: string
+        }
+        Update: {
+          anon_token?: string
+          auth_user_id?: string | null
+          canvas_user_id?: string
+          created_at?: string
+          display_name?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      submission_attempts: {
+        Row: {
+          canvas_response: Json | null
+          created_at: string
+          error_message: string | null
+          exam_session_id: string
+          id: string
+          kind: Database["public"]["Enums"]["submission_attempt_kind"]
+          success: boolean
+        }
+        Insert: {
+          canvas_response?: Json | null
+          created_at?: string
+          error_message?: string | null
+          exam_session_id: string
+          id?: string
+          kind: Database["public"]["Enums"]["submission_attempt_kind"]
+          success: boolean
+        }
+        Update: {
+          canvas_response?: Json | null
+          created_at?: string
+          error_message?: string | null
+          exam_session_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["submission_attempt_kind"]
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_attempts_exam_session_id_fkey"
+            columns: ["exam_session_id"]
+            isOneToOne: false
+            referencedRelation: "exam_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teachers: {
+        Row: {
+          auth_user_id: string
+          canvas_host: string | null
+          canvas_token_encrypted: string | null
+          created_at: string
+          display_name: string
+          email: string
+          gemini_live_daily_cap_minutes: number | null
+          gemini_text_daily_cap: number | null
+          google_oauth_tokens: Json | null
+          google_sub: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          canvas_host?: string | null
+          canvas_token_encrypted?: string | null
+          created_at?: string
+          display_name: string
+          email: string
+          gemini_live_daily_cap_minutes?: number | null
+          gemini_text_daily_cap?: number | null
+          google_oauth_tokens?: Json | null
+          google_sub: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          canvas_host?: string | null
+          canvas_token_encrypted?: string | null
+          created_at?: string
+          display_name?: string
+          email?: string
+          gemini_live_daily_cap_minutes?: number | null
+          gemini_text_daily_cap?: number | null
+          google_oauth_tokens?: Json | null
+          google_sub?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      check_and_increment_gemini_live_minutes: {
+        Args: {
+          p_default_cap: number
+          p_requested: number
+          p_teacher_id: string
+        }
+        Returns: boolean
+      }
+      check_and_increment_gemini_text_calls: {
+        Args: { p_default_cap: number; p_teacher_id: string }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
+    }
+    Enums: {
+      exam_session_state:
+        | "scheduled"
+        | "started"
+        | "in_progress"
+        | "completed"
+        | "excluded"
+        | "failed"
+      prompt_purpose:
+        | "voice_agent"
+        | "student_summary"
+        | "eval_generation"
+        | "rubric"
+        | "transcription"
+      prompt_scope: "system" | "template"
+      submission_attempt_kind: "body" | "draft_eval" | "comment_fallback"
+      super_grader_post_status: "pending" | "posted" | "error"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      exam_session_state: [
+        "scheduled",
+        "started",
+        "in_progress",
+        "completed",
+        "excluded",
+        "failed",
+      ],
+      prompt_purpose: [
+        "voice_agent",
+        "student_summary",
+        "eval_generation",
+        "rubric",
+        "transcription",
+      ],
+      prompt_scope: ["system", "template"],
+      submission_attempt_kind: ["body", "draft_eval", "comment_fallback"],
+      super_grader_post_status: ["pending", "posted", "error"],
+    },
+  },
+} as const
