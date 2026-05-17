@@ -6,6 +6,41 @@ import { requireAdmin } from "@/lib/auth/admin";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+const AGENTS_PATH = "/admin/agents";
+
+// =========================================================================
+// Persona (personality_presets)
+// =========================================================================
+
+export async function updatePersona(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const persona_body = String(formData.get("persona_body") ?? "").trim();
+  const flow_body = String(formData.get("flow_body") ?? "").trim();
+
+  if (!id) return { ok: false, error: "Missing preset id." };
+  if (!name) return { ok: false, error: "Name is required." };
+  if (!persona_body) return { ok: false, error: "Persona body is required." };
+  if (!flow_body) return { ok: false, error: "Flow body is required." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("personality_presets")
+    .update({
+      name,
+      description: description || null,
+      persona_body,
+      flow_body,
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(AGENTS_PATH);
+  return { ok: true };
+}
+
 // =========================================================================
 // Question set
 // =========================================================================
@@ -26,8 +61,7 @@ export async function updateQuestionSet(formData: FormData): Promise<ActionResul
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/admin/question-sets");
-  revalidatePath(`/admin/question-sets/${id}`);
+  revalidatePath(AGENTS_PATH);
   return { ok: true };
 }
 
@@ -56,28 +90,25 @@ export async function createBucket(formData: FormData): Promise<ActionResult> {
     .limit(1);
   const nextPos = ((existing?.[0]?.position as number | undefined) ?? -1) + 1;
 
-  const { error } = await supabase
-    .from("question_buckets")
-    .insert({
-      question_set_id: setId,
-      name,
-      position: nextPos,
-      select_count: selectCount,
-    });
+  const { error } = await supabase.from("question_buckets").insert({
+    question_set_id: setId,
+    name,
+    position: nextPos,
+    select_count: selectCount,
+  });
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath(`/admin/question-sets/${setId}`);
+  revalidatePath(AGENTS_PATH);
   return { ok: true };
 }
 
 export async function updateBucket(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
-  const setId = String(formData.get("question_set_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const selectCount = Number(formData.get("select_count") ?? 1);
 
-  if (!id || !setId) return { ok: false, error: "Missing ids." };
+  if (!id) return { ok: false, error: "Missing bucket id." };
   if (!name) return { ok: false, error: "Bucket name is required." };
   if (!Number.isInteger(selectCount) || selectCount < 0) {
     return { ok: false, error: "Select count must be a non-negative integer." };
@@ -90,21 +121,20 @@ export async function updateBucket(formData: FormData): Promise<ActionResult> {
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath(`/admin/question-sets/${setId}`);
+  revalidatePath(AGENTS_PATH);
   return { ok: true };
 }
 
 export async function deleteBucket(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
-  const setId = String(formData.get("question_set_id") ?? "");
-  if (!id || !setId) return { ok: false, error: "Missing ids." };
+  if (!id) return { ok: false, error: "Missing bucket id." };
 
   const supabase = await createServerSupabase();
   const { error } = await supabase.from("question_buckets").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath(`/admin/question-sets/${setId}`);
+  revalidatePath(AGENTS_PATH);
   return { ok: true };
 }
 
@@ -123,7 +153,6 @@ export async function moveBucket(formData: FormData): Promise<ActionResult> {
     parentId: setId,
     rowId: id,
     direction,
-    revalidate: `/admin/question-sets/${setId}`,
   });
 }
 
@@ -134,10 +163,9 @@ export async function moveBucket(formData: FormData): Promise<ActionResult> {
 export async function createQuestion(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const bucketId = String(formData.get("question_bucket_id") ?? "");
-  const setId = String(formData.get("question_set_id") ?? "");
   const text = String(formData.get("text") ?? "").trim();
 
-  if (!bucketId || !setId) return { ok: false, error: "Missing ids." };
+  if (!bucketId) return { ok: false, error: "Missing bucket id." };
   if (!text) return { ok: false, error: "Question text is required." };
 
   const supabase = await createServerSupabase();
@@ -156,18 +184,17 @@ export async function createQuestion(formData: FormData): Promise<ActionResult> 
   });
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath(`/admin/question-sets/${setId}`);
+  revalidatePath(AGENTS_PATH);
   return { ok: true };
 }
 
 export async function updateQuestion(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
-  const setId = String(formData.get("question_set_id") ?? "");
   const text = String(formData.get("text") ?? "").trim();
   const reference = String(formData.get("reference_snippet") ?? "").trim();
 
-  if (!id || !setId) return { ok: false, error: "Missing ids." };
+  if (!id) return { ok: false, error: "Missing question id." };
   if (!text) return { ok: false, error: "Question text is required." };
 
   const supabase = await createServerSupabase();
@@ -177,21 +204,20 @@ export async function updateQuestion(formData: FormData): Promise<ActionResult> 
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath(`/admin/question-sets/${setId}`);
+  revalidatePath(AGENTS_PATH);
   return { ok: true };
 }
 
 export async function deleteQuestion(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
-  const setId = String(formData.get("question_set_id") ?? "");
-  if (!id || !setId) return { ok: false, error: "Missing ids." };
+  if (!id) return { ok: false, error: "Missing question id." };
 
   const supabase = await createServerSupabase();
   const { error } = await supabase.from("questions").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath(`/admin/question-sets/${setId}`);
+  revalidatePath(AGENTS_PATH);
   return { ok: true };
 }
 
@@ -199,9 +225,8 @@ export async function moveQuestion(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const bucketId = String(formData.get("question_bucket_id") ?? "");
-  const setId = String(formData.get("question_set_id") ?? "");
   const direction = String(formData.get("direction") ?? "");
-  if (!id || !bucketId || !setId) return { ok: false, error: "Missing ids." };
+  if (!id || !bucketId) return { ok: false, error: "Missing ids." };
   if (direction !== "up" && direction !== "down") {
     return { ok: false, error: "Invalid direction." };
   }
@@ -211,12 +236,11 @@ export async function moveQuestion(formData: FormData): Promise<ActionResult> {
     parentId: bucketId,
     rowId: id,
     direction,
-    revalidate: `/admin/question-sets/${setId}`,
   });
 }
 
 // =========================================================================
-// Helper: swap position with adjacent row (uses sentinel -1 to dodge the
+// Helper: swap position with adjacent row (sentinel -1 dodges the
 // unique (parent, position) constraint mid-swap)
 // =========================================================================
 
@@ -226,7 +250,6 @@ async function swapPosition(opts: {
   parentId: string;
   rowId: string;
   direction: "up" | "down";
-  revalidate: string;
 }): Promise<ActionResult> {
   const supabase = await createServerSupabase();
 
@@ -241,9 +264,8 @@ async function swapPosition(opts: {
   const currentPos = current.position as number;
 
   const isUp = opts.direction === "up";
-  // .eq's column param is narrowed per-table by Supabase's generic types; for
-  // the table-agnostic helper we widen via `as never` — the caller passes the
-  // matching column name for each table.
+  // .eq's column param is narrowed per-table by Supabase's generic types; we
+  // widen via `as never` since the caller passes the matching column name.
   const query = supabase
     .from(opts.table)
     .select("id, position")
@@ -259,15 +281,14 @@ async function swapPosition(opts: {
     (neighborData?.[0] as { id: string; position: number } | undefined) ?? null;
   if (!neighborRow) return { ok: true }; // already at edge — no-op
 
-  // Three-step swap to dodge the unique (parent, position) constraint:
-  //   1) park current at sentinel -1
-  //   2) move neighbor into current's old slot
-  //   3) move current into neighbor's old slot
   const sentinel = -1;
   let step;
   step = await supabase.from(opts.table).update({ position: sentinel }).eq("id", opts.rowId);
   if (step.error) return { ok: false, error: step.error.message };
-  step = await supabase.from(opts.table).update({ position: currentPos }).eq("id", neighborRow.id);
+  step = await supabase
+    .from(opts.table)
+    .update({ position: currentPos })
+    .eq("id", neighborRow.id);
   if (step.error) return { ok: false, error: step.error.message };
   step = await supabase
     .from(opts.table)
@@ -275,6 +296,6 @@ async function swapPosition(opts: {
     .eq("id", opts.rowId);
   if (step.error) return { ok: false, error: step.error.message };
 
-  revalidatePath(opts.revalidate);
+  revalidatePath(AGENTS_PATH);
   return { ok: true };
 }

@@ -8,8 +8,7 @@ export default async function AdminOverviewPage() {
     { count: promptCount },
     { count: adminCount },
     { count: teacherCount },
-    { count: personaCount },
-    { count: qsetCount },
+    { count: agentCount },
     { count: questionCount },
   ] = await Promise.all([
     supabase.from("prompts").select("id", { count: "exact", head: true }),
@@ -17,10 +16,6 @@ export default async function AdminOverviewPage() {
     supabase.from("teachers").select("id", { count: "exact", head: true }),
     supabase
       .from("personality_presets")
-      .select("id", { count: "exact", head: true })
-      .is("teacher_id", null),
-    supabase
-      .from("question_sets")
       .select("id", { count: "exact", head: true })
       .is("teacher_id", null),
     supabase.from("questions").select("id", { count: "exact", head: true }),
@@ -37,16 +32,10 @@ export default async function AdminOverviewPage() {
 
       <div className="grid sm:grid-cols-3 gap-4">
         <Tile
-          label="Personality presets"
-          value={personaCount ?? 0}
-          href="/admin/personas"
-          hint="System personas (ChekhovBot, Book Club, Researcher, Study Partner)"
-        />
-        <Tile
-          label="Question sets"
-          value={qsetCount ?? 0}
-          href="/admin/question-sets"
-          hint={`${questionCount ?? 0} questions across all system sets`}
+          label="Agents"
+          value={agentCount ?? 0}
+          href="/admin/agents"
+          hint={`Persona + question set per agent · ${questionCount ?? 0} questions total`}
         />
         <Tile
           label="System prompts"

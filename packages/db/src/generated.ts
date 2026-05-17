@@ -387,6 +387,7 @@ export type Database = {
       personality_presets: {
         Row: {
           created_at: string
+          default_question_set_id: string | null
           description: string | null
           flow_body: string
           id: string
@@ -397,6 +398,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_question_set_id?: string | null
           description?: string | null
           flow_body: string
           id?: string
@@ -407,6 +409,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_question_set_id?: string | null
           description?: string | null
           flow_body?: string
           id?: string
@@ -416,6 +419,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "personality_presets_default_question_set_id_fkey"
+            columns: ["default_question_set_id"]
+            isOneToOne: false
+            referencedRelation: "question_sets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "personality_presets_teacher_id_fkey"
             columns: ["teacher_id"]
