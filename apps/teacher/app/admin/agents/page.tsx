@@ -9,6 +9,8 @@ type PresetRow = {
   description: string | null;
   persona_body: string;
   flow_body: string;
+  eval_prompt_body: string | null;
+  rubric_body: string | null;
   default_question_set_id: string | null;
   updated_at: string;
 };

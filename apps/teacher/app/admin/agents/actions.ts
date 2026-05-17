@@ -42,6 +42,33 @@ export async function updatePersona(formData: FormData): Promise<ActionResult> {
 }
 
 // =========================================================================
+// Evaluation (eval prompt + rubric on the persona row)
+// =========================================================================
+
+export async function updateEvaluation(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const eval_prompt_body = String(formData.get("eval_prompt_body") ?? "").trim();
+  const rubric_body = String(formData.get("rubric_body") ?? "").trim();
+
+  if (!id) return { ok: false, error: "Missing preset id." };
+  if (!eval_prompt_body) return { ok: false, error: "Evaluation prompt is required." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("personality_presets")
+    .update({
+      eval_prompt_body,
+      rubric_body: rubric_body || null,  // empty rubric = ungraded
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(AGENTS_PATH);
+  return { ok: true };
+}
+
+// =========================================================================
 // Question set
 // =========================================================================
 

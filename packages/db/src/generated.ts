@@ -389,10 +389,12 @@ export type Database = {
           created_at: string
           default_question_set_id: string | null
           description: string | null
+          eval_prompt_body: string | null
           flow_body: string
           id: string
           name: string
           persona_body: string
+          rubric_body: string | null
           teacher_id: string | null
           updated_at: string
         }
@@ -400,10 +402,12 @@ export type Database = {
           created_at?: string
           default_question_set_id?: string | null
           description?: string | null
+          eval_prompt_body?: string | null
           flow_body: string
           id?: string
           name: string
           persona_body: string
+          rubric_body?: string | null
           teacher_id?: string | null
           updated_at?: string
         }
@@ -411,10 +415,12 @@ export type Database = {
           created_at?: string
           default_question_set_id?: string | null
           description?: string | null
+          eval_prompt_body?: string | null
           flow_body?: string
           id?: string
           name?: string
           persona_body?: string
+          rubric_body?: string | null
           teacher_id?: string | null
           updated_at?: string
         }

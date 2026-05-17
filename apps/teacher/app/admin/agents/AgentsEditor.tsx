@@ -8,8 +8,8 @@ import {
   deleteBucket,
   deleteQuestion,
   moveBucket,
-  moveQuestion,
   updateBucket,
+  updateEvaluation,
   updatePersona,
   updateQuestion,
   updateQuestionSet,
@@ -21,6 +21,8 @@ type Persona = {
   description: string | null;
   persona_body: string;
   flow_body: string;
+  eval_prompt_body: string | null;
+  rubric_body: string | null;
   updated_at: string;
 };
 
@@ -185,6 +187,9 @@ function AgentCard({
         <SaveRow status={tagStatus(`${ns}:persona`)} label="Save persona" />
       </form>
 
+      {/* Evaluation (eval prompt + rubric) */}
+      <EvaluationBlock ns={ns} persona={persona} run={run} tagStatus={tagStatus} />
+
       {/* Question set */}
       {qset ? (
         <QuestionSetBlock
@@ -204,6 +209,62 @@ function AgentCard({
         </div>
       )}
     </section>
+  );
+}
+
+function EvaluationBlock({
+  ns,
+  persona,
+  run,
+  tagStatus,
+}: {
+  ns: string;
+  persona: Persona;
+  run: (tag: string, action: () => Promise<ActionResult>) => void;
+  tagStatus: (tag: string) => string | null;
+}) {
+  const isUngraded = !persona.rubric_body;
+  return (
+    <form
+      action={(fd) => run(`${ns}:eval`, () => updateEvaluation(fd))}
+      className="surface p-5 space-y-4"
+    >
+      <input type="hidden" name="id" value={persona.id} />
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="heading text-lg">Evaluation</h3>
+        <span className="muted text-xs">
+          {isUngraded ? "Ungraded — feedback only" : "Graded — produces score + grade adjustment"}
+        </span>
+      </div>
+
+      <Field
+        label="Evaluation prompt"
+        hint="Post-session: runs over the transcript (and rubric, if any) to produce teacher-facing analysis."
+      >
+        <textarea
+          name="eval_prompt_body"
+          defaultValue={persona.eval_prompt_body ?? ""}
+          required
+          rows={10}
+          className="w-full border border-rule rounded px-3 py-2 text-xs font-mono leading-relaxed"
+        />
+      </Field>
+
+      <Field
+        label="Rubric"
+        hint="Leave empty to make this agent ungraded (eval prompt produces feedback only, no scores)."
+      >
+        <textarea
+          name="rubric_body"
+          defaultValue={persona.rubric_body ?? ""}
+          rows={18}
+          placeholder="(empty = ungraded)"
+          className="w-full border border-rule rounded px-3 py-2 text-xs font-mono leading-relaxed"
+        />
+      </Field>
+
+      <SaveRow status={tagStatus(`${ns}:eval`)} label="Save evaluation" />
+    </form>
   );
 }
 
@@ -412,13 +473,15 @@ function BucketBlock({
       <StatusLine status={tagStatus(`${ns}:bucket-del:${bucket.id}`)} compact />
 
       <div className="space-y-2">
-        {questions.map((q, i) => (
+        <p className="muted text-xs">
+          Within-bucket order doesn&apos;t matter — the server picks{" "}
+          <code>{bucket.select_count}</code> at random per session.
+        </p>
+        {questions.map((q) => (
           <QuestionRow
             key={q.id}
             ns={ns}
             question={q}
-            isFirst={i === 0}
-            isLast={i === questions.length - 1}
             run={run}
             tagStatus={tagStatus}
           />
@@ -468,24 +531,17 @@ function BucketBlock({
 function QuestionRow({
   ns,
   question,
-  isFirst,
-  isLast,
   run,
   tagStatus,
 }: {
   ns: string;
   question: Question;
-  isFirst: boolean;
-  isLast: boolean;
   run: (tag: string, action: () => Promise<ActionResult>) => void;
   tagStatus: (tag: string) => string | null;
 }) {
   return (
     <div className="border border-rule rounded p-3 space-y-2 bg-paper">
       <div className="flex items-start gap-2">
-        <div className="muted text-xs font-mono pt-2 w-8 text-right">
-          {question.position + 1}.
-        </div>
         <form
           action={(fd) => run(`${ns}:q:${question.id}`, () => updateQuestion(fd))}
           className="flex-1 space-y-2"
@@ -511,50 +567,19 @@ function QuestionRow({
             <StatusLine status={tagStatus(`${ns}:q:${question.id}`)} compact />
           </div>
         </form>
-        <div className="flex flex-col items-center gap-1">
-          <MoveButton
-            disabled={isFirst}
-            onClick={() =>
-              run(`${ns}:q-move:${question.id}`, () => {
-                const fd = new FormData();
-                fd.set("id", question.id);
-                fd.set("question_bucket_id", question.question_bucket_id);
-                fd.set("direction", "up");
-                return moveQuestion(fd);
-              })
-            }
-            label="↑"
-            title="Move up"
-          />
-          <MoveButton
-            disabled={isLast}
-            onClick={() =>
-              run(`${ns}:q-move:${question.id}`, () => {
-                const fd = new FormData();
-                fd.set("id", question.id);
-                fd.set("question_bucket_id", question.question_bucket_id);
-                fd.set("direction", "down");
-                return moveQuestion(fd);
-              })
-            }
-            label="↓"
-            title="Move down"
-          />
-          <DeleteButton
-            label="×"
-            title="Delete question"
-            confirm="Delete this question? This cannot be undone."
-            onConfirm={() =>
-              run(`${ns}:q-del:${question.id}`, () => {
-                const fd = new FormData();
-                fd.set("id", question.id);
-                return deleteQuestion(fd);
-              })
-            }
-          />
-        </div>
+        <DeleteButton
+          label="×"
+          title="Delete question"
+          confirm="Delete this question? This cannot be undone."
+          onConfirm={() =>
+            run(`${ns}:q-del:${question.id}`, () => {
+              const fd = new FormData();
+              fd.set("id", question.id);
+              return deleteQuestion(fd);
+            })
+          }
+        />
       </div>
-      <StatusLine status={tagStatus(`${ns}:q-move:${question.id}`)} compact />
       <StatusLine status={tagStatus(`${ns}:q-del:${question.id}`)} compact />
     </div>
   );
