@@ -14,6 +14,8 @@ import {
   updateQuestion,
   updateQuestionSet,
 } from "./actions";
+import { IntakeEditor } from "./IntakeEditor";
+import type { IntakeConfig } from "@/lib/intake/types";
 
 type Persona = {
   id: string;
@@ -67,6 +69,7 @@ type Question = {
 
 export type AgentData = {
   persona: Persona;
+  intakeConfig: IntakeConfig;
   qset: QSet | null;
   buckets: Bucket[];
   questionsByBucket: Record<string, Question[]>;
@@ -78,7 +81,13 @@ type Status =
   | { kind: "saved"; tag: string }
   | { kind: "error"; tag: string; msg: string };
 
-export function AgentsEditor({ agents }: { agents: AgentData[] }) {
+export function AgentsEditor({
+  agents,
+  intakeCapBytes,
+}: {
+  agents: AgentData[];
+  intakeCapBytes: number;
+}) {
   // Shared status state — each form tag is unique across the page (prefixed
   // by persona id), so two agents being edited concurrently don't collide.
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -109,7 +118,13 @@ export function AgentsEditor({ agents }: { agents: AgentData[] }) {
   return (
     <div className="space-y-12">
       {agents.map((a) => (
-        <AgentCard key={a.persona.id} agent={a} run={run} tagStatus={tagStatus} />
+        <AgentCard
+          key={a.persona.id}
+          agent={a}
+          intakeCapBytes={intakeCapBytes}
+          run={run}
+          tagStatus={tagStatus}
+        />
       ))}
     </div>
   );
@@ -117,10 +132,12 @@ export function AgentsEditor({ agents }: { agents: AgentData[] }) {
 
 function AgentCard({
   agent,
+  intakeCapBytes,
   run,
   tagStatus,
 }: {
   agent: AgentData;
+  intakeCapBytes: number;
   run: (tag: string, action: () => Promise<ActionResult>) => void;
   tagStatus: (tag: string) => string | null;
 }) {
@@ -179,7 +196,7 @@ function AgentCard({
               className="w-full border border-rule rounded px-3 py-2 text-sm"
             />
           </Field>
-          <Field label="Live voice" hint="Gemini Live prebuilt voice.">
+          <Field label="Live voice">
             <select
               name="live_voice_name"
               defaultValue={persona.live_voice_name ?? ""}
@@ -250,6 +267,16 @@ function AgentCard({
 
         <SaveRow status={tagStatus(`${ns}:persona`)} label="Save persona" />
       </form>
+
+      {/* Intake config (Canvas toggles + reference materials) */}
+      <IntakeEditor
+        ns={ns}
+        personaId={persona.id}
+        intakeConfig={agent.intakeConfig}
+        capBytes={intakeCapBytes}
+        run={run}
+        tagStatus={tagStatus}
+      />
 
       {/* Evaluation (eval prompt + rubric) */}
       <EvaluationBlock ns={ns} persona={persona} run={run} tagStatus={tagStatus} />

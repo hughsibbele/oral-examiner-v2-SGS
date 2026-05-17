@@ -1,12 +1,64 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import {
+  getTeacherGoogleClient,
+  GoogleAuthError,
+} from "@/lib/google/auth";
+import {
+  extractPdfText,
+  extractPdfTextFromDrive,
+  PdfExtractionError,
+} from "@/lib/intake/pdf-to-text";
+import {
+  DEFAULT_INTAKE_CONFIG,
+  parseIntakeConfig,
+  type IntakeAttachment,
+  type IntakeConfig,
+} from "@/lib/intake/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 const AGENTS_PATH = "/admin/agents";
+
+/** Per-attachment file cap (before extraction) — M2b.1f spec. */
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Total intake-pack cap (sum of extracted-text byte sizes across all
+ * attachments). 500KB ≈ 125K tokens — well within any model context but
+ * small enough that nobody attaches a textbook. Override via
+ * INTAKE_TOTAL_CAP_BYTES env.
+ */
+const MAX_TOTAL_INTAKE_BYTES = Number(
+  process.env.INTAKE_TOTAL_CAP_BYTES ?? 500 * 1024,
+);
+
+/** Sum of attachment byte_size across a config; used for cap enforcement + UI. */
+function totalIntakeBytes(cfg: IntakeConfig): number {
+  return cfg.attachments.reduce((n, a) => n + (a.byte_size || 0), 0);
+}
+
+/** Validate that adding `newBytes` doesn't exceed the total cap. */
+function checkTotalCap(
+  cfg: IntakeConfig,
+  newBytes: number,
+): { ok: true } | { ok: false; error: string } {
+  const after = totalIntakeBytes(cfg) + newBytes;
+  if (after > MAX_TOTAL_INTAKE_BYTES) {
+    const usedKb = (totalIntakeBytes(cfg) / 1024).toFixed(0);
+    const capKb = (MAX_TOTAL_INTAKE_BYTES / 1024).toFixed(0);
+    const addKb = (newBytes / 1024).toFixed(1);
+    return {
+      ok: false,
+      error: `Would exceed total cap (${usedKb} KB used + ${addKb} KB new > ${capKb} KB cap). Remove a snippet first or trim this one.`,
+    };
+  }
+  return { ok: true };
+}
 
 // =========================================================================
 // Universal prompts (safety envelope + system prompts in `prompts` table)
@@ -308,6 +360,207 @@ export async function moveQuestion(formData: FormData): Promise<ActionResult> {
     rowId: id,
     direction,
   });
+}
+
+// =========================================================================
+// Intake config (admin-default on personality_presets)
+// =========================================================================
+
+/**
+ * Read + mutate the intake_config jsonb for a persona row. Centralizes the
+ * round-trip so each individual action stays small. Caller's `mutate`
+ * receives the parsed config and returns the updated shape (or null to
+ * abort with the given error message).
+ */
+async function withIntakeConfig(
+  personaId: string,
+  mutate: (cfg: IntakeConfig) => IntakeConfig | { error: string },
+): Promise<ActionResult> {
+  const supabase = await createServerSupabase();
+  const { data: row, error: readErr } = await supabase
+    .from("personality_presets")
+    .select("intake_config")
+    .eq("id", personaId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: readErr.message };
+  if (!row) return { ok: false, error: "Persona not found." };
+
+  const current = parseIntakeConfig(row.intake_config);
+  const result = mutate(current);
+  if ("error" in result) return { ok: false, error: result.error };
+
+  const { error: writeErr } = await supabase
+    .from("personality_presets")
+    .update({ intake_config: result as unknown as never })
+    .eq("id", personaId);
+  if (writeErr) return { ok: false, error: writeErr.message };
+
+  revalidatePath(AGENTS_PATH);
+  return { ok: true };
+}
+
+export async function updateIntakeToggles(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, error: "Missing persona id." };
+
+  const useDesc = formData.get("use_canvas_description") === "on";
+  const useSub = formData.get("use_canvas_submission") === "on";
+
+  return withIntakeConfig(id, (cfg) => ({
+    ...cfg,
+    use_canvas_description: useDesc,
+    use_canvas_submission: useSub,
+  }));
+}
+
+export async function addIntakeAttachmentFromDrive(
+  personaId: string,
+  driveFile: { id: string; name: string; mimeType: string },
+): Promise<ActionResult> {
+  const ctx = await requireAdmin();
+  if (!personaId) return { ok: false, error: "Missing persona id." };
+  if (!driveFile?.id) return { ok: false, error: "Missing Drive file id." };
+
+  let extracted;
+  try {
+    const oauth = await getTeacherGoogleClient(ctx.teacher.id);
+    extracted = await extractPdfTextFromDrive(driveFile.id, oauth, {
+      mimeType: driveFile.mimeType,
+    });
+  } catch (err) {
+    if (err instanceof GoogleAuthError) {
+      return { ok: false, error: `Drive auth: ${err.message}` };
+    }
+    if (err instanceof PdfExtractionError) {
+      return { ok: false, error: `Could not extract text: ${err.message}` };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Drive fetch failed.",
+    };
+  }
+
+  const attachment: IntakeAttachment = {
+    id: randomUUID(),
+    kind: "drive",
+    name: driveFile.name,
+    content: extracted.text,
+    byte_size: Buffer.byteLength(extracted.text, "utf8"),
+    drive_file_id: driveFile.id,
+    drive_mime_type: driveFile.mimeType,
+    created_at: new Date().toISOString(),
+  };
+  return withIntakeConfig(personaId, (cfg) => {
+    const check = checkTotalCap(cfg, attachment.byte_size);
+    if (!check.ok) return { error: check.error };
+    return { ...cfg, attachments: [...cfg.attachments, attachment] };
+  });
+}
+
+export async function addIntakeAttachmentFromUpload(
+  formData: FormData,
+): Promise<ActionResult> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, error: "Missing persona id." };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "Pick a PDF to upload." };
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    return {
+      ok: false,
+      error: `File is ${(file.size / 1024 / 1024).toFixed(1)}MB, exceeds 10MB cap.`,
+    };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  let extracted;
+  try {
+    extracted = await extractPdfText({ buffer, filename: file.name });
+  } catch (err) {
+    if (err instanceof PdfExtractionError) {
+      return { ok: false, error: `Could not extract text: ${err.message}` };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Extraction failed.",
+    };
+  }
+
+  const attachment: IntakeAttachment = {
+    id: randomUUID(),
+    kind: "upload",
+    name: file.name,
+    content: extracted.text,
+    byte_size: Buffer.byteLength(extracted.text, "utf8"),
+    created_at: new Date().toISOString(),
+  };
+  return withIntakeConfig(id, (cfg) => {
+    const check = checkTotalCap(cfg, attachment.byte_size);
+    if (!check.ok) return { error: check.error };
+    return { ...cfg, attachments: [...cfg.attachments, attachment] };
+  });
+}
+
+export async function addIntakeAttachmentFromPaste(
+  formData: FormData,
+): Promise<ActionResult> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const content = String(formData.get("content") ?? "").trim();
+  if (!id) return { ok: false, error: "Missing persona id." };
+  if (!name) return { ok: false, error: "Give the snippet a name." };
+  if (!content) return { ok: false, error: "Paste some text first." };
+  if (Buffer.byteLength(content, "utf8") > MAX_ATTACHMENT_BYTES) {
+    return { ok: false, error: "Pasted text exceeds 10MB cap." };
+  }
+
+  const attachment: IntakeAttachment = {
+    id: randomUUID(),
+    kind: "paste",
+    name,
+    content,
+    byte_size: Buffer.byteLength(content, "utf8"),
+    created_at: new Date().toISOString(),
+  };
+  return withIntakeConfig(id, (cfg) => {
+    const check = checkTotalCap(cfg, attachment.byte_size);
+    if (!check.ok) return { error: check.error };
+    return { ...cfg, attachments: [...cfg.attachments, attachment] };
+  });
+}
+
+/** Read the total-intake cap for the UI to display. Public, so the
+ *  IntakeEditor can show "X KB / Y KB used" without hardcoding the value. */
+export async function getIntakeTotalCapBytes(): Promise<number> {
+  return MAX_TOTAL_INTAKE_BYTES;
+}
+
+export async function removeIntakeAttachment(
+  formData: FormData,
+): Promise<ActionResult> {
+  await requireAdmin();
+  const personaId = String(formData.get("persona_id") ?? "");
+  const attachmentId = String(formData.get("attachment_id") ?? "");
+  if (!personaId) return { ok: false, error: "Missing persona id." };
+  if (!attachmentId) return { ok: false, error: "Missing attachment id." };
+
+  return withIntakeConfig(personaId, (cfg) => ({
+    ...cfg,
+    attachments: cfg.attachments.filter((a) => a.id !== attachmentId),
+  }));
+}
+
+/** Reset a persona's intake_config to the all-default shape. */
+export async function resetIntakeConfig(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, error: "Missing persona id." };
+  return withIntakeConfig(id, () => DEFAULT_INTAKE_CONFIG);
 }
 
 // =========================================================================

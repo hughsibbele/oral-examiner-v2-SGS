@@ -2,7 +2,13 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { AgentsEditor, type AgentData } from "./AgentsEditor";
 import { CollapsibleEditor } from "./CollapsibleEditor";
-import { updateSafetyEnvelope, updateSystemPrompt } from "./actions";
+import {
+  getIntakeTotalCapBytes,
+  updateSafetyEnvelope,
+  updateSystemPrompt,
+} from "./actions";
+import { parseIntakeConfig } from "@/lib/intake/types";
+import type { Json } from "@oral-examiner/db";
 
 const SYSTEM_PROMPT_META: Record<string, { title: string; subtitle: string }> = {
   student_summary: {
@@ -37,6 +43,7 @@ type PresetRow = {
   live_voice_name: string | null;
   opening_text: string | null;
   closing_text: string | null;
+  intake_config: Json;
   updated_at: string;
 };
 
@@ -67,6 +74,7 @@ type QuestionRow = {
 export default async function AdminAgentsPage() {
   await requireAdmin();
   const supabase = await createServerSupabase();
+  const intakeCapBytes = await getIntakeTotalCapBytes();
 
   // Step 0: the singleton safety envelope
   const { data: envelopeData, error: envelopeErr } = await supabase
@@ -191,6 +199,7 @@ export default async function AdminAgentsPage() {
     const setBuckets = qset ? bucketsBySet.get(qset.id) ?? [] : [];
     return {
       persona: p,
+      intakeConfig: parseIntakeConfig(p.intake_config),
       qset,
       buckets: setBuckets,
       questionsByBucket: Object.fromEntries(
@@ -270,7 +279,7 @@ export default async function AdminAgentsPage() {
         </ul>
       </nav>
 
-      <AgentsEditor agents={agents} />
+      <AgentsEditor agents={agents} intakeCapBytes={intakeCapBytes} />
     </div>
   );
 }

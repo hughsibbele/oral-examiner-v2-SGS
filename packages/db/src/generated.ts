@@ -393,6 +393,7 @@ export type Database = {
           eval_prompt_body: string | null
           flow_body: string
           id: string
+          intake_config: Json
           live_voice_name: string | null
           name: string
           opening_text: string | null
@@ -409,6 +410,7 @@ export type Database = {
           eval_prompt_body?: string | null
           flow_body: string
           id?: string
+          intake_config?: Json
           live_voice_name?: string | null
           name: string
           opening_text?: string | null
@@ -425,6 +427,7 @@ export type Database = {
           eval_prompt_body?: string | null
           flow_body?: string
           id?: string
+          intake_config?: Json
           live_voice_name?: string | null
           name?: string
           opening_text?: string | null

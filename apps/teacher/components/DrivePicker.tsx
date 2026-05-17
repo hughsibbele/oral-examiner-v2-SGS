@@ -238,17 +238,30 @@ export function DrivePicker({
         enableFeature: (f: unknown) => Builder;
         build: () => { setVisible: (v: boolean) => void };
       };
-      const builder = new (picker.PickerBuilder as new () => Builder)();
+      type SizedBuilder = Builder & {
+        setSize: (w: number, h: number) => Builder;
+      };
+      const builder = new (picker.PickerBuilder as new () => SizedBuilder)();
+
+      // Fit-to-viewport sizing — the default picker is a small modal that
+      // freezes when its internal list overflows. Use most of the viewport
+      // but cap so it stays a dialog, not full-screen.
+      const w = Math.min(1100, window.innerWidth - 40);
+      const h = Math.min(720, window.innerHeight - 60);
+
       let chain = builder
+        .setSize(w, h)
         .addView(view)
         .setOAuthToken(accessToken)
         .setAppId(appId)
-        .setCallback(handleCallback)
-        // NAV_HIDDEN keeps the picker focused on the one view; teachers
-        // don't need the full Google-Drive sidebar in this context.
-        .enableFeature(picker.Feature.NAV_HIDDEN);
+        .setCallback(handleCallback);
+      // NAV_HIDDEN drops the left sidebar (Recent / Shared / Starred) —
+      // removed because under drive.file scope the user often needs those
+      // filters to navigate to files this app hasn't yet seen.
+
       // Only attach the API key if one was configured — Google's wizard
-      // explicitly says the Picker doesn't need it.
+      // explicitly says the Picker doesn't need it; setting it improves
+      // thumbnail loading + quota attribution.
       if (developerKey) {
         chain = chain.setDeveloperKey(developerKey);
       }
