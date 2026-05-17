@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   type ActionResult,
@@ -113,20 +114,28 @@ function AgentCard({
 
   return (
     <section id={`agent-${persona.id}`} className="scroll-mt-20 space-y-5">
-      <header className="border-l-4 border-maroon pl-4">
-        <h2 className="heading text-2xl">{persona.name}</h2>
-        {persona.description && (
-          <p className="muted text-sm mt-1">{persona.description}</p>
-        )}
-        <p className="muted text-xs mt-1">
-          Persona updated {new Date(persona.updated_at).toLocaleDateString()}
-          {qset && (
-            <>
-              {" · "}question set updated{" "}
-              {new Date(qset.updated_at).toLocaleDateString()}
-            </>
+      <header className="border-l-4 border-maroon pl-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="heading text-2xl">{persona.name}</h2>
+          {persona.description && (
+            <p className="muted text-sm mt-1">{persona.description}</p>
           )}
-        </p>
+          <p className="muted text-xs mt-1">
+            Persona updated {new Date(persona.updated_at).toLocaleDateString()}
+            {qset && (
+              <>
+                {" · "}question set updated{" "}
+                {new Date(qset.updated_at).toLocaleDateString()}
+              </>
+            )}
+          </p>
+        </div>
+        <Link
+          href={`/admin/agents/${persona.id}/try`}
+          className="btn bg-maroon text-white px-3 py-1.5 text-sm shrink-0 no-underline"
+        >
+          Try it out →
+        </Link>
       </header>
 
       {/* Persona */}
