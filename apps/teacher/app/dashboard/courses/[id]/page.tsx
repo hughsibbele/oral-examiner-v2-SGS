@@ -108,7 +108,12 @@ export default async function CoursePage({
                   className="p-3 flex items-baseline justify-between gap-4"
                 >
                   <div>
-                    <div className="font-medium">{a.name}</div>
+                    <Link
+                      href={`/dashboard/courses/${canvasCourseId}/assignments/${row.canvas_assignment_id}`}
+                      className="font-medium text-ink hover:underline"
+                    >
+                      {a.name}
+                    </Link>
                     <div className="muted text-xs mt-0.5">
                       Due {due}
                       {typeof a.points_possible === "number" && ` · ${a.points_possible} pts`}
@@ -117,11 +122,19 @@ export default async function CoursePage({
                       )}
                     </div>
                   </div>
-                  <InstallCardButton
-                    canvasCourseId={canvasCourseId}
-                    canvasAssignmentId={row.canvas_assignment_id}
-                    installed={installed}
-                  />
+                  <div className="flex flex-col items-end gap-1">
+                    <InstallCardButton
+                      canvasCourseId={canvasCourseId}
+                      canvasAssignmentId={row.canvas_assignment_id}
+                      installed={installed}
+                    />
+                    <Link
+                      href={`/dashboard/courses/${canvasCourseId}/assignments/${row.canvas_assignment_id}`}
+                      className="muted text-xs underline"
+                    >
+                      Configure agent →
+                    </Link>
+                  </div>
                 </li>
               );
             })}

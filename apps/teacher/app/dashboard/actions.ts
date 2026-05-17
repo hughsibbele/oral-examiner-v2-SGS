@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import {
   listTeachingCourses,
@@ -340,5 +341,177 @@ export async function uninstallOralExamCard({
     if (err instanceof CanvasError) return { ok: false, error: err.message };
     return { ok: false, error: err instanceof Error ? err.message : "Uninstall failed." };
   }
+}
+
+type CloneResult =
+  | { ok: true; templateId: string; created: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Clone a personality_preset into a per-(teacher, canvas_assignment)
+ * exam_template. Idempotent: if a template already exists for the pair,
+ * return its id with created=false. The prose fields (persona_body, flow_body,
+ * opening_text, closing_text) stay null on the new row — the runtime
+ * assembler will fall back to the preset until the teacher edits them. The
+ * template carries question_set_id (= preset.default_question_set_id) so the
+ * server-side random question selection has something to pick from.
+ *
+ * RLS scopes preset reads to teacher-owned + system-seeded rows; teachers can
+ * only insert exam_templates rows owned by themselves.
+ */
+export async function cloneAgentToTemplate({
+  canvasCourseId,
+  canvasAssignmentId,
+  presetId,
+}: {
+  canvasCourseId: string;
+  canvasAssignmentId: string;
+  presetId: string;
+}): Promise<CloneResult> {
+  const canvas = await getCanvasConfigForTeacher();
+  if (!canvas) {
+    return { ok: false, error: "Canvas token not configured." };
+  }
+
+  const admin = createAdminClient();
+
+  // Already configured for this assignment? Return existing.
+  const { data: existing } = await admin
+    .from("exam_templates")
+    .select("id")
+    .eq("teacher_id", canvas.teacherId)
+    .eq("canvas_assignment_id", canvasAssignmentId)
+    .maybeSingle();
+  if (existing) {
+    return { ok: true, templateId: existing.id as string, created: false };
+  }
+
+  // Preset must be visible to this teacher (system-seeded OR owned).
+  const { data: preset, error: presetErr } = await admin
+    .from("personality_presets")
+    .select("id, name, default_question_set_id, teacher_id")
+    .eq("id", presetId)
+    .maybeSingle();
+  if (presetErr || !preset) {
+    return { ok: false, error: "Personality preset not found." };
+  }
+  if (preset.teacher_id && preset.teacher_id !== canvas.teacherId) {
+    return { ok: false, error: "That agent isn't available to your account." };
+  }
+
+  // Best-effort assignment-name lookup so the new template carries a
+  // human-readable name. The cache may be stale or absent; fall back to the
+  // preset name + assignment id.
+  const { data: cacheRow } = await admin
+    .from("canvas_assignment_cache")
+    .select("payload")
+    .eq("teacher_id", canvas.teacherId)
+    .eq("canvas_assignment_id", canvasAssignmentId)
+    .maybeSingle();
+  type CachedAssignment = { name?: string };
+  const cached = (cacheRow?.payload as unknown as CachedAssignment | null) ?? null;
+  const templateName = cached?.name
+    ? `${preset.name} · ${cached.name}`
+    : `${preset.name} · assignment ${canvasAssignmentId}`;
+
+  const examToken = randomBytes(8).toString("hex"); // 16 hex chars
+
+  const { data: inserted, error: insErr } = await admin
+    .from("exam_templates")
+    .insert({
+      teacher_id: canvas.teacherId,
+      canvas_assignment_id: canvasAssignmentId,
+      canvas_course_id: canvasCourseId,
+      name: templateName,
+      personality_preset_id: preset.id,
+      question_set_id: preset.default_question_set_id,
+      exam_token: examToken,
+    })
+    .select("id")
+    .single();
+  if (insErr || !inserted) {
+    return { ok: false, error: `Template insert failed: ${insErr?.message ?? "unknown"}` };
+  }
+
+  revalidatePath(`/dashboard/courses/${canvasCourseId}`);
+  revalidatePath(`/dashboard/courses/${canvasCourseId}/assignments/${canvasAssignmentId}`);
+  return { ok: true, templateId: inserted.id as string, created: true };
+}
+
+type ChangeResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Swap which personality_preset an existing template clones from. Only
+ * affects fallback fields (persona_body, flow_body, etc. that are null on
+ * the template); does NOT clobber teacher-edited overrides. Also updates
+ * question_set_id to the new preset's default if the template was still
+ * pointing at the old preset's default.
+ */
+export async function changeAgentForTemplate({
+  canvasCourseId,
+  canvasAssignmentId,
+  presetId,
+}: {
+  canvasCourseId: string;
+  canvasAssignmentId: string;
+  presetId: string;
+}): Promise<ChangeResult> {
+  const canvas = await getCanvasConfigForTeacher();
+  if (!canvas) {
+    return { ok: false, error: "Canvas token not configured." };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: template } = await admin
+    .from("exam_templates")
+    .select("id, personality_preset_id, question_set_id")
+    .eq("teacher_id", canvas.teacherId)
+    .eq("canvas_assignment_id", canvasAssignmentId)
+    .maybeSingle();
+  if (!template) {
+    return { ok: false, error: "No template configured for this assignment yet." };
+  }
+
+  const oldPresetId = template.personality_preset_id as string | null;
+  const { data: oldPreset } = oldPresetId
+    ? await admin
+        .from("personality_presets")
+        .select("default_question_set_id")
+        .eq("id", oldPresetId)
+        .maybeSingle()
+    : { data: null };
+
+  const { data: newPreset } = await admin
+    .from("personality_presets")
+    .select("id, default_question_set_id, teacher_id")
+    .eq("id", presetId)
+    .maybeSingle();
+  if (!newPreset) {
+    return { ok: false, error: "Personality preset not found." };
+  }
+  if (newPreset.teacher_id && newPreset.teacher_id !== canvas.teacherId) {
+    return { ok: false, error: "That agent isn't available to your account." };
+  }
+
+  const stillOnPresetDefault =
+    oldPreset?.default_question_set_id === template.question_set_id;
+  const patch: { personality_preset_id: string; question_set_id?: string | null } = {
+    personality_preset_id: newPreset.id as string,
+  };
+  if (stillOnPresetDefault) {
+    patch.question_set_id = (newPreset.default_question_set_id as string | null) ?? null;
+  }
+
+  const { error: upErr } = await admin
+    .from("exam_templates")
+    .update(patch)
+    .eq("id", template.id);
+  if (upErr) {
+    return { ok: false, error: `Change failed: ${upErr.message}` };
+  }
+
+  revalidatePath(`/dashboard/courses/${canvasCourseId}/assignments/${canvasAssignmentId}`);
+  return { ok: true };
 }
 
