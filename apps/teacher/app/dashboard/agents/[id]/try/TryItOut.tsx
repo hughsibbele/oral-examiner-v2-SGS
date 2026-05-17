@@ -149,7 +149,14 @@ export function TryItOut({
     // Open the Live session with the ephemeral token. Model is pinned in the
     // token's liveConnectConstraints, but the SDK still requires it as a
     // string here — pass it through from the auth-token response.
-    const ai = new GoogleGenAI({ apiKey: token, apiVersion: "v1alpha" });
+    // apiVersion: "v1alpha" is REQUIRED for ephemeral auth tokens + preview
+    // Live models. Without it the SDK falls back to v1main (GA), which
+    // doesn't know about preview models — symptom: "model not found for API
+    // version v1main, or is not supported for bidiGenera".
+    const ai = new GoogleGenAI({
+      apiKey: token,
+      httpOptions: { apiVersion: "v1alpha" },
+    });
     let session: Session;
     try {
       session = await ai.live.connect({
