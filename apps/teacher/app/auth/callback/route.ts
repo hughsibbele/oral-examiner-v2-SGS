@@ -74,16 +74,26 @@ export async function GET(request: Request) {
   }
 
   // Teacher path.
+  // Google OAuth tokens come back on the Supabase session — capture them so
+  // server-side Drive calls (Picker token, Save-to-Drive, PDF intake) work
+  // without a fresh sign-in. refresh_token only on first consent / when
+  // prompt=consent is set on the sign-in (it is — see LoginForm).
   try {
-    await ensureTeacherForUser({
-      id: user.id,
-      email: user.email,
-      user_metadata: user.user_metadata as {
-        full_name?: string;
-        name?: string;
-        sub?: string;
+    await ensureTeacherForUser(
+      {
+        id: user.id,
+        email: user.email,
+        user_metadata: user.user_metadata as {
+          full_name?: string;
+          name?: string;
+          sub?: string;
+        },
       },
-    });
+      {
+        access_token: data.session.provider_token,
+        refresh_token: data.session.provider_refresh_token,
+      },
+    );
   } catch (err) {
     await supabase.auth.signOut();
     const reason = err instanceof Error ? err.message : "policy";

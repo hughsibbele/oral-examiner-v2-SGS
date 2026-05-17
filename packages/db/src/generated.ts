@@ -694,8 +694,11 @@ export type Database = {
           gemini_live_daily_cap_minutes: number | null
           gemini_live_dryrun_daily_cap_minutes: number | null
           gemini_text_daily_cap: number | null
+          google_access_token: string | null
           google_oauth_tokens: Json | null
+          google_refresh_token: string | null
           google_sub: string
+          google_token_expires_at: string | null
           id: string
           updated_at: string
         }
@@ -709,8 +712,11 @@ export type Database = {
           gemini_live_daily_cap_minutes?: number | null
           gemini_live_dryrun_daily_cap_minutes?: number | null
           gemini_text_daily_cap?: number | null
+          google_access_token?: string | null
           google_oauth_tokens?: Json | null
+          google_refresh_token?: string | null
           google_sub: string
+          google_token_expires_at?: string | null
           id?: string
           updated_at?: string
         }
@@ -724,8 +730,11 @@ export type Database = {
           gemini_live_daily_cap_minutes?: number | null
           gemini_live_dryrun_daily_cap_minutes?: number | null
           gemini_text_daily_cap?: number | null
+          google_access_token?: string | null
           google_oauth_tokens?: Json | null
+          google_refresh_token?: string | null
           google_sub?: string
+          google_token_expires_at?: string | null
           id?: string
           updated_at?: string
         }

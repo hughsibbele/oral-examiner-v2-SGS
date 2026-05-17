@@ -4,7 +4,16 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-const SCOPES = ["openid", "email", "profile"].join(" ");
+// `drive.file` lets the teacher attach files to exam templates (intake
+// attachments + save-template-to-Drive). Non-sensitive scope; per-file
+// authorization (Google only exposes files the user explicitly opens in our
+// app's Picker).
+const SCOPES = [
+  "openid",
+  "email",
+  "profile",
+  "https://www.googleapis.com/auth/drive.file",
+].join(" ");
 
 export function LoginForm() {
   const params = useSearchParams();
@@ -24,6 +33,13 @@ export function LoginForm() {
         scopes: SCOPES,
         queryParams: {
           access_type: "offline",
+          // `prompt=consent` forces Google to re-show the consent screen.
+          // Without it, Google silently skips consent when a sibling app on
+          // the same OAuth client (the converged suite client) has already
+          // been authorized — and skipping consent also skips refresh-token
+          // issuance, leaving the server unable to refresh the access token
+          // when it expires an hour later. HK / HH hit this; we inherit.
+          prompt: "consent",
           hd: "episcopalhighschool.org",
         },
       },
