@@ -5,12 +5,30 @@ import {
   listTeachingCourses,
   listCourseAssignments,
   listCourseStudentEnrollments,
+  getAssignment,
+  updateAssignmentDescription,
+  buildExamCardBlock,
+  replaceOrAppendExamCardBlock,
+  removeExamCardBlock,
   CanvasError,
 } from "@oral-examiner/canvas";
 import type { Json } from "@oral-examiner/db";
 import { anonToken, readSaltFromEnv } from "@oral-examiner/anonymizer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCanvasConfigForTeacher } from "@/lib/canvas/server";
+
+function readAppBaseUrl(): string {
+  const url =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.NEXT_PUBLIC_BASE_URL ??
+    "";
+  if (!url) {
+    throw new Error(
+      "NEXT_PUBLIC_APP_URL (or legacy NEXT_PUBLIC_BASE_URL) is not set.",
+    );
+  }
+  return url;
+}
 
 /**
  * Active-term filter: pulls only courses whose name OR course_code starts with
@@ -206,3 +224,121 @@ export async function refreshRoster(canvasCourseId: string): Promise<{
   revalidatePath(`/dashboard/courses/${canvasCourseId}`);
   return { ok: true, students: students.length, skipped };
 }
+
+type InstallResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Install (or reinstall) the OE branded card into a Canvas assignment's
+ * description. Idempotent — re-running strips any existing OE block first
+ * (marker-wrapped or comment-stripped) and inserts a fresh one. After a
+ * successful PUT we refresh the assignment-cache row so the dashboard's
+ * "Installed" indicator updates without an extra Refresh-assignments click.
+ */
+export async function installOralExamCard({
+  canvasCourseId,
+  canvasAssignmentId,
+}: {
+  canvasCourseId: string;
+  canvasAssignmentId: string;
+}): Promise<InstallResult> {
+  const canvas = await getCanvasConfigForTeacher();
+  if (!canvas) {
+    return { ok: false, error: "Canvas token not configured." };
+  }
+
+  let appBaseUrl: string;
+  try {
+    appBaseUrl = readAppBaseUrl();
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "App URL missing." };
+  }
+
+  try {
+    const current = await getAssignment(canvas.config, canvasCourseId, canvasAssignmentId);
+    const cardHtml = buildExamCardBlock({ appBaseUrl, canvasAssignmentId });
+    const nextDescription = replaceOrAppendExamCardBlock(
+      current.description ?? "",
+      cardHtml,
+      canvasAssignmentId,
+    );
+    const updated = await updateAssignmentDescription(
+      canvas.config,
+      canvasCourseId,
+      canvasAssignmentId,
+      nextDescription,
+    );
+
+    const admin = createAdminClient();
+    await admin
+      .from("canvas_assignment_cache")
+      .upsert(
+        {
+          teacher_id: canvas.teacherId,
+          canvas_assignment_id: canvasAssignmentId,
+          canvas_course_id: canvasCourseId,
+          payload: updated as unknown as Json,
+          last_synced_at: new Date().toISOString(),
+        },
+        { onConflict: "teacher_id,canvas_assignment_id" },
+      );
+
+    revalidatePath(`/dashboard/courses/${canvasCourseId}`);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof CanvasError) return { ok: false, error: err.message };
+    return { ok: false, error: err instanceof Error ? err.message : "Install failed." };
+  }
+}
+
+export async function uninstallOralExamCard({
+  canvasCourseId,
+  canvasAssignmentId,
+}: {
+  canvasCourseId: string;
+  canvasAssignmentId: string;
+}): Promise<InstallResult> {
+  const canvas = await getCanvasConfigForTeacher();
+  if (!canvas) {
+    return { ok: false, error: "Canvas token not configured." };
+  }
+
+  try {
+    const current = await getAssignment(canvas.config, canvasCourseId, canvasAssignmentId);
+    const nextDescription = removeExamCardBlock(
+      current.description ?? "",
+      canvasAssignmentId,
+    );
+    if (nextDescription === (current.description ?? "")) {
+      // Nothing to remove — refresh cache anyway and report ok.
+      revalidatePath(`/dashboard/courses/${canvasCourseId}`);
+      return { ok: true };
+    }
+    const updated = await updateAssignmentDescription(
+      canvas.config,
+      canvasCourseId,
+      canvasAssignmentId,
+      nextDescription,
+    );
+
+    const admin = createAdminClient();
+    await admin
+      .from("canvas_assignment_cache")
+      .upsert(
+        {
+          teacher_id: canvas.teacherId,
+          canvas_assignment_id: canvasAssignmentId,
+          canvas_course_id: canvasCourseId,
+          payload: updated as unknown as Json,
+          last_synced_at: new Date().toISOString(),
+        },
+        { onConflict: "teacher_id,canvas_assignment_id" },
+      );
+
+    revalidatePath(`/dashboard/courses/${canvasCourseId}`);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof CanvasError) return { ok: false, error: err.message };
+    return { ok: false, error: err instanceof Error ? err.message : "Uninstall failed." };
+  }
+}
+

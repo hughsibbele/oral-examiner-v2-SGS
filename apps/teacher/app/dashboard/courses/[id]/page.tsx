@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { hasExamCardMarkerBlock } from "@oral-examiner/canvas";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { RefreshAssignmentsButton } from "./RefreshAssignmentsButton";
 import { RefreshRosterButton } from "./RefreshRosterButton";
+import { InstallCardButton } from "./InstallCardButton";
 
 type CoursePayload = {
   id: number;
@@ -14,6 +16,7 @@ type CoursePayload = {
 type AssignmentPayload = {
   id: number;
   name: string;
+  description?: string | null;
   due_at?: string | null;
   points_possible?: number | null;
   submission_types?: string[];
@@ -98,6 +101,7 @@ export default async function CoursePage({
             {assignments.map((row) => {
               const a = row.payload;
               const due = a.due_at ? new Date(a.due_at).toLocaleDateString() : "—";
+              const installed = hasExamCardMarkerBlock(a.description ?? "");
               return (
                 <li
                   key={row.canvas_assignment_id}
@@ -113,9 +117,11 @@ export default async function CoursePage({
                       )}
                     </div>
                   </div>
-                  <span className="muted text-xs whitespace-nowrap">
-                    Phase 2 install →
-                  </span>
+                  <InstallCardButton
+                    canvasCourseId={canvasCourseId}
+                    canvasAssignmentId={row.canvas_assignment_id}
+                    installed={installed}
+                  />
                 </li>
               );
             })}
@@ -123,7 +129,8 @@ export default async function CoursePage({
         )}
         <p className="muted text-xs mt-3">
           {assignments.length} published assignment{assignments.length === 1 ? "" : "s"}.
-          Per-template authoring + branded-card install ship in the Phase 2 follow-on.
+          Install paints a branded EHS card into the Canvas assignment description;
+          re-install is idempotent and uninstall strips the block cleanly.
         </p>
       </section>
 

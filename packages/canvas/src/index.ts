@@ -4,6 +4,18 @@
 // list, assignment description PUT for the branded-card install.
 // Phase 3: masquerade body POST, draft comment POST, draft → publish.
 
+export {
+  buildExamCardBlock,
+  findExamCardBlock,
+  findExamCardMarkerBlock,
+  hasExamCardMarkerBlock,
+  removeExamCardBlock,
+  replaceOrAppendExamCardBlock,
+  type BuildExamCardArgs,
+  type ExamCardMarkerMeta,
+  type FoundExamCardBlock,
+} from "./install";
+
 export type CanvasConfig = {
   host: string;
   token: string;
@@ -215,6 +227,38 @@ export async function getAssignment(
       `Canvas GET assignment returned ${res.status}.`,
       res.status,
       body,
+    );
+  }
+  return (await res.json()) as CanvasAssignment;
+}
+
+/**
+ * PUT a new `description` HTML onto an assignment. Used by the install flow
+ * after splicing the branded card into the existing HTML. Canvas accepts the
+ * field as form-encoded `assignment[description]`.
+ */
+export async function updateAssignmentDescription(
+  config: CanvasConfig,
+  canvasCourseId: string | number,
+  canvasAssignmentId: string | number,
+  descriptionHtml: string,
+): Promise<CanvasAssignment> {
+  const path = `/courses/${canvasCourseId}/assignments/${canvasAssignmentId}`;
+  const body = new URLSearchParams();
+  body.set("assignment[description]", descriptionHtml);
+  const res = await canvasFetch(config, path, {
+    method: "PUT",
+    body,
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new CanvasError(
+      `Canvas PUT assignment returned ${res.status}.`,
+      res.status,
+      text,
     );
   }
   return (await res.json()) as CanvasAssignment;
