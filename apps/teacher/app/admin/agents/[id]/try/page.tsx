@@ -21,7 +21,7 @@ export default async function TryItOutPage({
   ] = await Promise.all([
     supabase
       .from("personality_presets")
-      .select("id, name, persona_body, flow_body, default_question_set_id")
+      .select("id, name, persona_body, flow_body, default_question_set_id, live_voice_name")
       .eq("id", id)
       .maybeSingle(),
     supabase.from("safety_envelope").select("body").eq("id", 1).maybeSingle(),
@@ -54,6 +54,7 @@ export default async function TryItOutPage({
     persona_body: string;
     flow_body: string;
     default_question_set_id: string | null;
+    live_voice_name: string | null;
   };
 
   const selected = persona.default_question_set_id
@@ -116,7 +117,11 @@ export default async function TryItOutPage({
         </ul>
       </details>
 
-      <TryItOut systemPrompt={systemPrompt} agentName={persona.name} />
+      <TryItOut
+        systemPrompt={systemPrompt}
+        agentName={persona.name}
+        voiceName={persona.live_voice_name}
+      />
     </div>
   );
 }

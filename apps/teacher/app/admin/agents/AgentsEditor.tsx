@@ -24,8 +24,22 @@ type Persona = {
   flow_body: string;
   eval_prompt_body: string | null;
   rubric_body: string | null;
+  live_voice_name: string | null;
   updated_at: string;
 };
+
+// Gemini Live prebuilt voices (as of late 2025 / early 2026). Update this
+// list when Google ships new voices in the Live API.
+const LIVE_VOICES = [
+  "Aoede",
+  "Charon",
+  "Fenrir",
+  "Kore",
+  "Leda",
+  "Puck",
+  "Orus",
+  "Zephyr",
+] as const;
 
 type QSet = {
   id: string;
@@ -149,7 +163,7 @@ function AgentCard({
           <span className="muted text-xs">Voice, style, boundaries, examination flow</span>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid sm:grid-cols-3 gap-3">
           <Field label="Name">
             <input
               name="name"
@@ -164,6 +178,20 @@ function AgentCard({
               defaultValue={persona.description ?? ""}
               className="w-full border border-rule rounded px-3 py-2 text-sm"
             />
+          </Field>
+          <Field label="Live voice" hint="Gemini Live prebuilt voice.">
+            <select
+              name="live_voice_name"
+              defaultValue={persona.live_voice_name ?? ""}
+              className="w-full border border-rule rounded px-3 py-2 text-sm"
+            >
+              <option value="">(default — first available)</option>
+              {LIVE_VOICES.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
 

@@ -34,6 +34,7 @@ type PresetRow = {
   eval_prompt_body: string | null;
   rubric_body: string | null;
   default_question_set_id: string | null;
+  live_voice_name: string | null;
   updated_at: string;
 };
 

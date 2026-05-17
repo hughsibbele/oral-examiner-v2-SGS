@@ -392,6 +392,7 @@ export type Database = {
           eval_prompt_body: string | null
           flow_body: string
           id: string
+          live_voice_name: string | null
           name: string
           persona_body: string
           rubric_body: string | null
@@ -405,6 +406,7 @@ export type Database = {
           eval_prompt_body?: string | null
           flow_body: string
           id?: string
+          live_voice_name?: string | null
           name: string
           persona_body: string
           rubric_body?: string | null
@@ -418,6 +420,7 @@ export type Database = {
           eval_prompt_body?: string | null
           flow_body?: string
           id?: string
+          live_voice_name?: string | null
           name?: string
           persona_body?: string
           rubric_body?: string | null
@@ -683,6 +686,7 @@ export type Database = {
           display_name: string
           email: string
           gemini_live_daily_cap_minutes: number | null
+          gemini_live_dryrun_daily_cap_minutes: number | null
           gemini_text_daily_cap: number | null
           google_oauth_tokens: Json | null
           google_sub: string
@@ -697,6 +701,7 @@ export type Database = {
           display_name: string
           email: string
           gemini_live_daily_cap_minutes?: number | null
+          gemini_live_dryrun_daily_cap_minutes?: number | null
           gemini_text_daily_cap?: number | null
           google_oauth_tokens?: Json | null
           google_sub: string
@@ -711,6 +716,7 @@ export type Database = {
           display_name?: string
           email?: string
           gemini_live_daily_cap_minutes?: number | null
+          gemini_live_dryrun_daily_cap_minutes?: number | null
           gemini_text_daily_cap?: number | null
           google_oauth_tokens?: Json | null
           google_sub?: string

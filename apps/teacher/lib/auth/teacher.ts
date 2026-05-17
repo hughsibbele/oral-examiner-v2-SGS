@@ -10,6 +10,7 @@ export type Teacher = {
   canvas_token_encrypted: string | null;
   canvas_host: string | null;
   gemini_live_daily_cap_minutes: number | null;
+  gemini_live_dryrun_daily_cap_minutes: number | null;
   gemini_text_daily_cap: number | null;
   created_at: string;
   updated_at: string;
