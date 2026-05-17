@@ -1,7 +1,28 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { AgentsEditor, type AgentData } from "./AgentsEditor";
-import { SafetyEnvelopeForm } from "./SafetyEnvelopeForm";
+import { CollapsibleEditor } from "./CollapsibleEditor";
+import { updateSafetyEnvelope, updateSystemPrompt } from "./actions";
+
+const SYSTEM_PROMPT_META: Record<string, { title: string; subtitle: string }> = {
+  student_summary: {
+    title: "Student summary prompt",
+    subtitle:
+      "Generates the third-person summary that goes into the student's Canvas submission body after the exam. Content-agnostic.",
+  },
+  transcription: {
+    title: "Transcription prompt",
+    subtitle:
+      "Tells the audio-to-text model how to transcribe the recorded exam (speaker labels, hesitations, anonymization). Content-agnostic.",
+  },
+};
+
+type SystemPromptRow = {
+  id: string;
+  purpose: string;
+  body: string;
+  updated_at: string;
+};
 
 type PresetRow = {
   id: string;
@@ -61,6 +82,22 @@ export default async function AdminAgentsPage() {
   const envelope = envelopeData as
     | { id: number; body: string; updated_at: string }
     | null;
+
+  // Step 0.5: system prompts in the prompts table (student_summary, transcription)
+  const { data: systemPromptsData, error: systemPromptsErr } = await supabase
+    .from("prompts")
+    .select("id, purpose, body, updated_at")
+    .eq("scope", "system")
+    .order("purpose");
+  if (systemPromptsErr) {
+    return (
+      <div className="surface p-5">
+        <h1 className="heading text-2xl mb-2">Agents</h1>
+        <p className="text-sm">Failed to load system prompts: {systemPromptsErr.message}</p>
+      </div>
+    );
+  }
+  const systemPrompts = (systemPromptsData ?? []) as SystemPromptRow[];
 
   // Step 1: all system personas, ordered by name (deterministic across reloads)
   const { data: presetsData, error: presetsErr } = await supabase
@@ -176,7 +213,43 @@ export default async function AdminAgentsPage() {
         </p>
       </div>
 
-      <SafetyEnvelopeForm envelope={envelope} />
+      <div className="space-y-3">
+        <h2 className="heading text-lg">Universal — apply to every agent</h2>
+        {envelope ? (
+          <CollapsibleEditor
+            title="Safety envelope"
+            subtitle="Wrapped around every agent's persona + flow at runtime. Universal hard-safety + voice-delivery rules. Editable here, once."
+            body={envelope.body}
+            updatedAt={envelope.updated_at}
+            saveAction={updateSafetyEnvelope}
+            textareaRows={20}
+          />
+        ) : (
+          <div className="surface p-4 border-l-4 border-red-700">
+            <p className="text-sm">
+              No safety envelope row found. Re-run the seed migration.
+            </p>
+          </div>
+        )}
+        {systemPrompts.map((p) => {
+          const meta = SYSTEM_PROMPT_META[p.purpose] ?? {
+            title: p.purpose,
+            subtitle: "",
+          };
+          return (
+            <CollapsibleEditor
+              key={p.id}
+              title={meta.title}
+              subtitle={meta.subtitle}
+              body={p.body}
+              updatedAt={p.updated_at}
+              saveAction={updateSystemPrompt}
+              hiddenId={p.id}
+              textareaRows={12}
+            />
+          );
+        })}
+      </div>
 
       {/* Sticky agent picker */}
       <nav className="sticky top-0 z-10 -mx-6 px-6 py-3 bg-paper border-b border-rule">

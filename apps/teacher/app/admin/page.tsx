@@ -5,13 +5,11 @@ export default async function AdminOverviewPage() {
   const supabase = await createServerSupabase();
 
   const [
-    { count: promptCount },
     { count: adminCount },
     { count: teacherCount },
     { count: agentCount },
     { count: questionCount },
   ] = await Promise.all([
-    supabase.from("prompts").select("id", { count: "exact", head: true }),
     supabase.from("admins").select("email", { count: "exact", head: true }),
     supabase.from("teachers").select("id", { count: "exact", head: true }),
     supabase
@@ -35,13 +33,7 @@ export default async function AdminOverviewPage() {
           label="Agents"
           value={agentCount ?? 0}
           href="/admin/agents"
-          hint={`Persona + question set per agent · ${questionCount ?? 0} questions total`}
-        />
-        <Tile
-          label="System prompts"
-          value={promptCount ?? 0}
-          href="/admin/prompts"
-          hint="Grading/summary/eval prompts (read-only for now)"
+          hint={`Persona + eval + question set per agent · ${questionCount ?? 0} questions · safety envelope + system prompts also here`}
         />
         <Tile
           label="Admins"

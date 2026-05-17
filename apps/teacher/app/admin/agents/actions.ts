@@ -9,7 +9,7 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 const AGENTS_PATH = "/admin/agents";
 
 // =========================================================================
-// Safety envelope (singleton; admin-editable)
+// Universal prompts (safety envelope + system prompts in `prompts` table)
 // =========================================================================
 
 export async function updateSafetyEnvelope(formData: FormData): Promise<ActionResult> {
@@ -22,6 +22,24 @@ export async function updateSafetyEnvelope(formData: FormData): Promise<ActionRe
     .from("safety_envelope")
     .update({ body })
     .eq("id", 1);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(AGENTS_PATH);
+  return { ok: true };
+}
+
+export async function updateSystemPrompt(formData: FormData): Promise<ActionResult> {
+  const result = await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  if (!id) return { ok: false, error: "Missing prompt id." };
+  if (!body) return { ok: false, error: "Prompt body is required." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("prompts")
+    .update({ body, updated_by_email: result.teacher.email })
+    .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(AGENTS_PATH);

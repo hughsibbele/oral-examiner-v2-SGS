@@ -53,7 +53,6 @@ export default async function AdminLayout({
           <>
             <Link href="/admin">Overview</Link>
             <Link href="/admin/agents">Agents</Link>
-            <Link href="/admin/prompts">Prompts</Link>
             <Link href="/admin/admins">Admins</Link>
             <Link href="/dashboard">Dashboard</Link>
             <form action="/auth/signout" method="post" className="inline">

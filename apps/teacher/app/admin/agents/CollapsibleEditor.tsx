@@ -1,30 +1,40 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateSafetyEnvelope } from "./actions";
+import type { ActionResult } from "./actions";
 
-type Envelope = { id: number; body: string; updated_at: string } | null;
+type Status = "idle" | "saving" | "saved" | { error: string };
 
-export function SafetyEnvelopeForm({ envelope }: { envelope: Envelope }) {
+/**
+ * Collapsible card for editing a single text body via a server action.
+ * Reused for the safety envelope and the system-wide prompts (student_summary,
+ * transcription) at the top of /admin/agents.
+ */
+export function CollapsibleEditor({
+  title,
+  subtitle,
+  body,
+  updatedAt,
+  saveAction,
+  hiddenId,
+  textareaRows = 16,
+}: {
+  title: string;
+  subtitle: string;
+  body: string;
+  updatedAt: string;
+  saveAction: (formData: FormData) => Promise<ActionResult>;
+  hiddenId?: string | number;
+  textareaRows?: number;
+}) {
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | { error: string }>("idle");
+  const [status, setStatus] = useState<Status>("idle");
   const [, startTransition] = useTransition();
-
-  if (!envelope) {
-    return (
-      <div className="surface p-4 border-l-4 border-red-700">
-        <p className="text-sm">
-          No safety envelope row found. Re-run the seed migration or insert one
-          manually into <code>safety_envelope</code>.
-        </p>
-      </div>
-    );
-  }
 
   async function action(formData: FormData) {
     setStatus("saving");
     startTransition(async () => {
-      const result = await updateSafetyEnvelope(formData);
+      const result = await saveAction(formData);
       if (result.ok) {
         setStatus("saved");
         setTimeout(() => setStatus("idle"), 2000);
@@ -37,17 +47,13 @@ export function SafetyEnvelopeForm({ envelope }: { envelope: Envelope }) {
   return (
     <section className="surface p-4 border-l-4 border-maroon">
       <header className="flex items-baseline justify-between gap-3">
-        <div>
-          <h2 className="heading text-lg">Safety envelope</h2>
-          <p className="muted text-xs mt-0.5">
-            Universal rules applied to every agent at runtime — wrapped around
-            each persona + flow before the model sees the prompt. Edited here,
-            once, by admins.
-          </p>
+        <div className="min-w-0">
+          <h3 className="heading text-lg">{title}</h3>
+          <p className="muted text-xs mt-0.5">{subtitle}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <span className="muted text-xs">
-            Updated {new Date(envelope.updated_at).toLocaleString()}
+            {new Date(updatedAt).toLocaleString()}
           </span>
           <button
             type="button"
@@ -61,11 +67,14 @@ export function SafetyEnvelopeForm({ envelope }: { envelope: Envelope }) {
 
       {open && (
         <form action={action} className="mt-4 space-y-3">
+          {hiddenId !== undefined && (
+            <input type="hidden" name="id" value={String(hiddenId)} />
+          )}
           <textarea
             name="body"
-            defaultValue={envelope.body}
+            defaultValue={body}
             required
-            rows={20}
+            rows={textareaRows}
             className="w-full border border-rule rounded px-3 py-2 text-xs font-mono leading-relaxed"
           />
           <div className="flex items-center gap-3">
@@ -74,7 +83,7 @@ export function SafetyEnvelopeForm({ envelope }: { envelope: Envelope }) {
               className="btn bg-maroon text-white px-4 py-2 text-sm"
               disabled={status === "saving"}
             >
-              {status === "saving" ? "Saving…" : "Save envelope"}
+              {status === "saving" ? "Saving…" : "Save"}
             </button>
             {status === "saved" && (
               <span className="text-sm text-green-700">Saved.</span>
