@@ -24,6 +24,8 @@ type Persona = {
   eval_prompt_body: string | null;
   rubric_body: string | null;
   live_voice_name: string | null;
+  opening_text: string | null;
+  closing_text: string | null;
   updated_at: string;
 };
 
@@ -218,6 +220,33 @@ function AgentCard({
             className="w-full border border-rule rounded px-3 py-2 text-xs font-mono leading-relaxed"
           />
         </Field>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field
+            label="Opening line"
+            hint="Deterministic first words. Leave empty to let the flow's PHASE 1 govern."
+          >
+            <textarea
+              name="opening_text"
+              defaultValue={persona.opening_text ?? ""}
+              rows={3}
+              placeholder='e.g. "Good afternoon, dear student. I am ChekhovBot, here to discuss your essay…"'
+              className="w-full border border-rule rounded px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field
+            label="Closing line"
+            hint="Deterministic last words. Leave empty to let the flow's wrap govern."
+          >
+            <textarea
+              name="closing_text"
+              defaultValue={persona.closing_text ?? ""}
+              rows={3}
+              placeholder='e.g. "Thank you. Until next we meet by the cherry orchard…"'
+              className="w-full border border-rule rounded px-3 py-2 text-sm"
+            />
+          </Field>
+        </div>
 
         <SaveRow status={tagStatus(`${ns}:persona`)} label="Save persona" />
       </form>

@@ -22,7 +22,9 @@ export default async function TryItOutPage({
   ] = await Promise.all([
     supabase
       .from("personality_presets")
-      .select("id, name, persona_body, flow_body, default_question_set_id, live_voice_name")
+      .select(
+        "id, name, persona_body, flow_body, default_question_set_id, live_voice_name, opening_text, closing_text",
+      )
       .eq("id", id)
       .maybeSingle(),
     supabase.from("safety_envelope").select("body").eq("id", 1).maybeSingle(),
@@ -56,6 +58,8 @@ export default async function TryItOutPage({
     flow_body: string;
     default_question_set_id: string | null;
     live_voice_name: string | null;
+    opening_text: string | null;
+    closing_text: string | null;
   };
 
   const selected = persona.default_question_set_id
@@ -67,6 +71,8 @@ export default async function TryItOutPage({
     persona_body: persona.persona_body,
     flow_body: persona.flow_body,
     selected_questions: selected,
+    opening_text: persona.opening_text,
+    closing_text: persona.closing_text,
   });
 
   return (

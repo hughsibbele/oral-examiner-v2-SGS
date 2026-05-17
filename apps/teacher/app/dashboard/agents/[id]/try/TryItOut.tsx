@@ -212,6 +212,34 @@ export function TryItOut({
       return;
     }
 
+    // Kick the agent to speak first. Live API doesn't auto-greet on connect;
+    // the model only responds to a user turn. We send a short hidden cue so
+    // the agent opens immediately with whatever its OPENING / flow PHASE 1
+    // dictates. The cue itself doesn't appear in the visible transcript
+    // (we only render inputAudioTranscription, which only fires for audio
+    // turns, never for text).
+    try {
+      session.sendClientContent({
+        turns: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: "(The student has joined the session and is listening. Begin now, exactly as your OPENING and flow direct.)",
+              },
+            ],
+          },
+        ],
+        turnComplete: true,
+      });
+    } catch {
+      /* session may have already closed */
+    }
+
+    // Agent is about to speak — transition VAD into "responding" so the
+    // status pill shows "Agent speaking" while it starts up, then handleServer
+    // Message's turnComplete will flip back to "listening".
+    setVadState("responding");
     setStatus({ kind: "live" });
   }
 

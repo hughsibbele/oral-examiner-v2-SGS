@@ -386,6 +386,7 @@ export type Database = {
       }
       personality_presets: {
         Row: {
+          closing_text: string | null
           created_at: string
           default_question_set_id: string | null
           description: string | null
@@ -394,12 +395,14 @@ export type Database = {
           id: string
           live_voice_name: string | null
           name: string
+          opening_text: string | null
           persona_body: string
           rubric_body: string | null
           teacher_id: string | null
           updated_at: string
         }
         Insert: {
+          closing_text?: string | null
           created_at?: string
           default_question_set_id?: string | null
           description?: string | null
@@ -408,12 +411,14 @@ export type Database = {
           id?: string
           live_voice_name?: string | null
           name: string
+          opening_text?: string | null
           persona_body: string
           rubric_body?: string | null
           teacher_id?: string | null
           updated_at?: string
         }
         Update: {
+          closing_text?: string | null
           created_at?: string
           default_question_set_id?: string | null
           description?: string | null
@@ -422,6 +427,7 @@ export type Database = {
           id?: string
           live_voice_name?: string | null
           name?: string
+          opening_text?: string | null
           persona_body?: string
           rubric_body?: string | null
           teacher_id?: string | null

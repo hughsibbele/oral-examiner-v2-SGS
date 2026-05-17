@@ -58,6 +58,8 @@ export async function updatePersona(formData: FormData): Promise<ActionResult> {
   const persona_body = String(formData.get("persona_body") ?? "").trim();
   const flow_body = String(formData.get("flow_body") ?? "").trim();
   const live_voice_name = String(formData.get("live_voice_name") ?? "").trim();
+  const opening_text = String(formData.get("opening_text") ?? "").trim();
+  const closing_text = String(formData.get("closing_text") ?? "").trim();
 
   if (!id) return { ok: false, error: "Missing preset id." };
   if (!name) return { ok: false, error: "Name is required." };
@@ -73,6 +75,8 @@ export async function updatePersona(formData: FormData): Promise<ActionResult> {
       persona_body,
       flow_body,
       live_voice_name: live_voice_name || null,
+      opening_text: opening_text || null,
+      closing_text: closing_text || null,
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };

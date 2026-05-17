@@ -35,6 +35,8 @@ type PresetRow = {
   rubric_body: string | null;
   default_question_set_id: string | null;
   live_voice_name: string | null;
+  opening_text: string | null;
+  closing_text: string | null;
   updated_at: string;
 };
 

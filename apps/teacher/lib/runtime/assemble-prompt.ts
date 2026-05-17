@@ -43,7 +43,9 @@ export function assembleSystemPrompt(input: AssemblePromptInput): string {
   }
 
   if (input.opening_text && input.opening_text.trim()) {
-    sections.push("# OPENING (overrides default greeting in the flow)");
+    sections.push(
+      "# OPENING (your first words to the student — speak this verbatim, then continue with the examination flow):",
+    );
     sections.push(input.opening_text.trim());
   }
 
@@ -55,7 +57,9 @@ export function assembleSystemPrompt(input: AssemblePromptInput): string {
   }
 
   if (input.closing_text && input.closing_text.trim()) {
-    sections.push("# CLOSING (overrides default wrap in the flow)");
+    sections.push(
+      "# CLOSING (your last words to the student — speak this verbatim when ending the session):",
+    );
     sections.push(input.closing_text.trim());
   }
 
