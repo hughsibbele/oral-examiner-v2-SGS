@@ -472,20 +472,22 @@ function BucketBlock({
       <StatusLine status={tagStatus(`${ns}:bucket-move:${bucket.id}`)} compact />
       <StatusLine status={tagStatus(`${ns}:bucket-del:${bucket.id}`)} compact />
 
-      <div className="space-y-2">
-        <p className="muted text-xs">
+      <div>
+        <p className="muted text-xs mb-1">
           Within-bucket order doesn&apos;t matter — the server picks{" "}
           <code>{bucket.select_count}</code> at random per session.
         </p>
-        {questions.map((q) => (
-          <QuestionRow
-            key={q.id}
-            ns={ns}
-            question={q}
-            run={run}
-            tagStatus={tagStatus}
-          />
-        ))}
+        <div className="border-t border-rule">
+          {questions.map((q) => (
+            <QuestionRow
+              key={q.id}
+              ns={ns}
+              question={q}
+              run={run}
+              tagStatus={tagStatus}
+            />
+          ))}
+        </div>
         {questions.length === 0 && (
           <p className="muted text-xs">No questions in this bucket yet.</p>
         )}
@@ -539,49 +541,57 @@ function QuestionRow({
   run: (tag: string, action: () => Promise<ActionResult>) => void;
   tagStatus: (tag: string) => string | null;
 }) {
+  const status = tagStatus(`${ns}:q:${question.id}`);
+  const delStatus = tagStatus(`${ns}:q-del:${question.id}`);
   return (
-    <div className="border border-rule rounded p-3 space-y-2 bg-paper">
-      <div className="flex items-start gap-2">
-        <form
-          action={(fd) => run(`${ns}:q:${question.id}`, () => updateQuestion(fd))}
-          className="flex-1 space-y-2"
-        >
-          <input type="hidden" name="id" value={question.id} />
-          <textarea
-            name="text"
-            defaultValue={question.text}
-            required
-            rows={3}
-            className="w-full border border-rule rounded px-3 py-2 text-sm"
-          />
-          <input
-            name="reference_snippet"
-            defaultValue={question.reference_snippet ?? ""}
-            placeholder="Optional reference snippet"
-            className="w-full border border-rule rounded px-3 py-2 text-xs"
-          />
-          <div className="flex items-center gap-2">
-            <button type="submit" className="btn px-3 py-1.5 text-xs">
-              Save
-            </button>
-            <StatusLine status={tagStatus(`${ns}:q:${question.id}`)} compact />
-          </div>
-        </form>
-        <DeleteButton
-          label="×"
-          title="Delete question"
-          confirm="Delete this question? This cannot be undone."
-          onConfirm={() =>
-            run(`${ns}:q-del:${question.id}`, () => {
-              const fd = new FormData();
-              fd.set("id", question.id);
-              return deleteQuestion(fd);
-            })
-          }
-        />
-      </div>
-      <StatusLine status={tagStatus(`${ns}:q-del:${question.id}`)} compact />
-    </div>
+    <form
+      action={(fd) => run(`${ns}:q:${question.id}`, () => updateQuestion(fd))}
+      className="grid grid-cols-[1fr_180px_auto_auto] items-start gap-2 py-1.5 border-b border-rule last:border-0"
+    >
+      <input type="hidden" name="id" value={question.id} />
+      <textarea
+        name="text"
+        defaultValue={question.text}
+        required
+        rows={1}
+        className="[field-sizing:content] border border-rule rounded px-2 py-1 text-sm leading-snug resize-none min-h-[2rem]"
+      />
+      <input
+        name="reference_snippet"
+        defaultValue={question.reference_snippet ?? ""}
+        placeholder="snippet (optional)"
+        className="border border-rule rounded px-2 py-1 text-xs text-ink/70 min-h-[2rem]"
+      />
+      <button
+        type="submit"
+        title="Save row"
+        className="btn px-2 py-1 text-xs min-h-[2rem]"
+      >
+        {status === "saving" ? "…" : "Save"}
+      </button>
+      <DeleteButton
+        label="×"
+        title="Delete question"
+        confirm="Delete this question? This cannot be undone."
+        onConfirm={() =>
+          run(`${ns}:q-del:${question.id}`, () => {
+            const fd = new FormData();
+            fd.set("id", question.id);
+            return deleteQuestion(fd);
+          })
+        }
+      />
+      {(status === "saved" || (typeof status === "string" && status !== "saving" && status !== "saved")) && (
+        <div className="col-span-4 -mt-1">
+          <StatusLine status={status} compact />
+        </div>
+      )}
+      {delStatus && delStatus !== "saving" && (
+        <div className="col-span-4 -mt-1">
+          <StatusLine status={delStatus} compact />
+        </div>
+      )}
+    </form>
   );
 }
 

@@ -1,6 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { AgentsEditor, type AgentData } from "./AgentsEditor";
+import { SafetyEnvelopeForm } from "./SafetyEnvelopeForm";
 
 type PresetRow = {
   id: string;
@@ -42,6 +43,24 @@ type QuestionRow = {
 export default async function AdminAgentsPage() {
   await requireAdmin();
   const supabase = await createServerSupabase();
+
+  // Step 0: the singleton safety envelope
+  const { data: envelopeData, error: envelopeErr } = await supabase
+    .from("safety_envelope")
+    .select("id, body, updated_at")
+    .eq("id", 1)
+    .maybeSingle();
+  if (envelopeErr) {
+    return (
+      <div className="surface p-5">
+        <h1 className="heading text-2xl mb-2">Agents</h1>
+        <p className="text-sm">Failed to load safety envelope: {envelopeErr.message}</p>
+      </div>
+    );
+  }
+  const envelope = envelopeData as
+    | { id: number; body: string; updated_at: string }
+    | null;
 
   // Step 1: all system personas, ordered by name (deterministic across reloads)
   const { data: presetsData, error: presetsErr } = await supabase
@@ -156,6 +175,8 @@ export default async function AdminAgentsPage() {
           cloned an agent are unaffected; new templates pull the latest values.
         </p>
       </div>
+
+      <SafetyEnvelopeForm envelope={envelope} />
 
       {/* Sticky agent picker */}
       <nav className="sticky top-0 z-10 -mx-6 px-6 py-3 bg-paper border-b border-rule">

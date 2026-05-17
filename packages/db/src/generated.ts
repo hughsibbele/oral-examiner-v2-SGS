@@ -585,6 +585,27 @@ export type Database = {
           },
         ]
       }
+      safety_envelope: {
+        Row: {
+          body: string
+          id: number
+          updated_at: string
+          updated_by_email: string | null
+        }
+        Insert: {
+          body: string
+          id?: number
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Update: {
+          body?: string
+          id?: number
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           anon_token: string

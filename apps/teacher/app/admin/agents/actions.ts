@@ -9,6 +9,26 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 const AGENTS_PATH = "/admin/agents";
 
 // =========================================================================
+// Safety envelope (singleton; admin-editable)
+// =========================================================================
+
+export async function updateSafetyEnvelope(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const body = String(formData.get("body") ?? "").trim();
+  if (!body) return { ok: false, error: "Envelope body is required." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("safety_envelope")
+    .update({ body })
+    .eq("id", 1);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(AGENTS_PATH);
+  return { ok: true };
+}
+
+// =========================================================================
 // Persona (personality_presets)
 // =========================================================================
 
