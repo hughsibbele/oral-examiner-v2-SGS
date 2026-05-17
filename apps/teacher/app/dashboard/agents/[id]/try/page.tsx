@@ -56,6 +56,8 @@ export default async function TryItOutPage({
     name: string;
     persona_body: string;
     flow_body: string;
+    follow_up_depth: "light" | "medium" | "deep";
+    personalization_enabled: boolean;
     default_question_set_id: string | null;
     live_voice_name: string | null;
     opening_text: string | null;
@@ -70,6 +72,10 @@ export default async function TryItOutPage({
     envelope_body: envelopeData.body,
     persona_body: persona.persona_body,
     flow_body: persona.flow_body,
+    flow_parameters: {
+      follow_up_depth: persona.follow_up_depth,
+      personalization_enabled: persona.personalization_enabled,
+    },
     selected_questions: selected,
     opening_text: persona.opening_text,
     closing_text: persona.closing_text,

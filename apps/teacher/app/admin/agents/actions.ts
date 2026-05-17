@@ -108,7 +108,6 @@ export async function updatePersona(formData: FormData): Promise<ActionResult> {
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const persona_body = String(formData.get("persona_body") ?? "").trim();
-  const flow_body = String(formData.get("flow_body") ?? "").trim();
   const live_voice_name = String(formData.get("live_voice_name") ?? "").trim();
   const opening_text = String(formData.get("opening_text") ?? "").trim();
   const closing_text = String(formData.get("closing_text") ?? "").trim();
@@ -116,7 +115,6 @@ export async function updatePersona(formData: FormData): Promise<ActionResult> {
   if (!id) return { ok: false, error: "Missing preset id." };
   if (!name) return { ok: false, error: "Name is required." };
   if (!persona_body) return { ok: false, error: "Persona body is required." };
-  if (!flow_body) return { ok: false, error: "Flow body is required." };
 
   const supabase = await createServerSupabase();
   const { error } = await supabase
@@ -125,10 +123,46 @@ export async function updatePersona(formData: FormData): Promise<ActionResult> {
       name,
       description: description || null,
       persona_body,
-      flow_body,
       live_voice_name: live_voice_name || null,
       opening_text: opening_text || null,
       closing_text: closing_text || null,
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(AGENTS_PATH);
+  return { ok: true };
+}
+
+// =========================================================================
+// Flow (prose flow_body + 3 structured knobs on personality_presets)
+// =========================================================================
+
+export async function updateFlow(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const flow_body = String(formData.get("flow_body") ?? "").trim();
+  const follow_up_depth = String(formData.get("follow_up_depth") ?? "");
+  const personalization_enabled =
+    formData.get("personalization_enabled") === "on";
+
+  if (!id) return { ok: false, error: "Missing preset id." };
+  if (!flow_body) return { ok: false, error: "Flow body is required." };
+  if (
+    follow_up_depth !== "light" &&
+    follow_up_depth !== "medium" &&
+    follow_up_depth !== "deep"
+  ) {
+    return { ok: false, error: "Follow-up depth must be light, medium, or deep." };
+  }
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("personality_presets")
+    .update({
+      flow_body,
+      follow_up_depth,
+      personalization_enabled,
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };

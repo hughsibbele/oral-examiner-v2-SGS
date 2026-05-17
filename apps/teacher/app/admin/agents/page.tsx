@@ -37,6 +37,8 @@ type PresetRow = {
   description: string | null;
   persona_body: string;
   flow_body: string;
+  follow_up_depth: "light" | "medium" | "deep";
+  personalization_enabled: boolean;
   eval_prompt_body: string | null;
   rubric_body: string | null;
   default_question_set_id: string | null;

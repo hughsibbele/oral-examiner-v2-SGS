@@ -392,12 +392,14 @@ export type Database = {
           description: string | null
           eval_prompt_body: string | null
           flow_body: string
+          follow_up_depth: string
           id: string
           intake_config: Json
           live_voice_name: string | null
           name: string
           opening_text: string | null
           persona_body: string
+          personalization_enabled: boolean
           rubric_body: string | null
           teacher_id: string | null
           updated_at: string
@@ -409,12 +411,14 @@ export type Database = {
           description?: string | null
           eval_prompt_body?: string | null
           flow_body: string
+          follow_up_depth?: string
           id?: string
           intake_config?: Json
           live_voice_name?: string | null
           name: string
           opening_text?: string | null
           persona_body: string
+          personalization_enabled?: boolean
           rubric_body?: string | null
           teacher_id?: string | null
           updated_at?: string
@@ -426,12 +430,14 @@ export type Database = {
           description?: string | null
           eval_prompt_body?: string | null
           flow_body?: string
+          follow_up_depth?: string
           id?: string
           intake_config?: Json
           live_voice_name?: string | null
           name?: string
           opening_text?: string | null
           persona_body?: string
+          personalization_enabled?: boolean
           rubric_body?: string | null
           teacher_id?: string | null
           updated_at?: string

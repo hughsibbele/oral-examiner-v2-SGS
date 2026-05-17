@@ -1,9 +1,11 @@
 import type { SelectedQuestion } from "./select-questions";
+import { formatFlowParameters, type FlowParameters } from "./flow-parameters";
 
 export type AssemblePromptInput = {
   envelope_body: string;
   persona_body: string;
   flow_body: string;
+  flow_parameters?: FlowParameters | null;
   selected_questions: SelectedQuestion[];
   opening_text?: string | null;
   closing_text?: string | null;
@@ -35,6 +37,14 @@ export function assembleSystemPrompt(input: AssemblePromptInput): string {
   sections.push(input.persona_body.trim());
 
   sections.push("# EXAMINATION FLOW");
+  if (input.flow_parameters) {
+    sections.push(
+      formatFlowParameters(
+        input.flow_parameters,
+        input.selected_questions.length,
+      ),
+    );
+  }
   sections.push(input.flow_body.trim());
 
   if (input.intake_pack && input.intake_pack.trim()) {

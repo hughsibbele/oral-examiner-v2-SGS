@@ -91,6 +91,7 @@ export function IntakeEditor({
       {/* Canvas toggles */}
       <form
         action={(fd) => run(`${ns}:intake-toggles`, () => updateIntakeToggles(fd))}
+        data-track-dirty
         className="space-y-3"
       >
         <input type="hidden" name="id" value={personaId} />
