@@ -43,6 +43,7 @@ export function TryItOut({
   const [vad, setVad] = useState<VadState>("listening");
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const [reservedMinutes, setReservedMinutes] = useState<number | null>(null);
+  const [adminBypass, setAdminBypass] = useState(false);
 
   // Resource refs we need to clean up.
   const sessionRef = useRef<Session | null>(null);
@@ -109,8 +110,9 @@ export function TryItOut({
       const data = (await res.json()) as {
         token?: string;
         model?: string;
-        reservedMinutes?: number;
-        capMinutes?: number;
+        reservedMinutes?: number | null;
+        capMinutes?: number | null;
+        adminBypass?: boolean;
         error?: string;
       };
       if (!res.ok || !data.token || !data.model) {
@@ -119,6 +121,7 @@ export function TryItOut({
       token = data.token;
       model = data.model;
       setReservedMinutes(data.reservedMinutes ?? null);
+      setAdminBypass(!!data.adminBypass);
     } catch (err) {
       cleanup();
       setStatus({ kind: "error", msg: err instanceof Error ? err.message : "Token request failed" });
@@ -287,8 +290,11 @@ export function TryItOut({
     const pcm16 = float32ToInt16(float32);
     const b64 = arrayBufferToBase64(pcm16.buffer as ArrayBuffer);
     try {
+      // v1alpha API: typed `audio` field. The old `media` field is
+      // deprecated and the server rejects with "realtime_input.media_chunks
+      // is deprecated. Use audio, video, or text instead."
       session.sendRealtimeInput({
-        media: { data: b64, mimeType: `audio/pcm;rate=${INPUT_SAMPLE_RATE}` },
+        audio: { data: b64, mimeType: `audio/pcm;rate=${INPUT_SAMPLE_RATE}` },
       });
     } catch {
       /* session may be closing */
@@ -371,7 +377,9 @@ export function TryItOut({
             ) : (
               "Default voice."
             )}{" "}
-            {reservedMinutes != null && <>Reserved {reservedMinutes} min from your daily cap.</>}
+            {adminBypass
+              ? "Admin — no daily cap."
+              : reservedMinutes != null && <>Reserved {reservedMinutes} min from your daily cap.</>}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -424,7 +432,9 @@ export function TryItOut({
       {status.kind === "ended" && (
         <div className="px-4 py-3 muted text-xs border-t border-rule">
           Session ended ({status.reason}). Click <strong>Start again</strong> to retry
-          (uses another reservation against your daily cap).
+          {adminBypass
+            ? "."
+            : " (uses another reservation against your daily cap)."}
         </div>
       )}
     </section>
