@@ -52,6 +52,8 @@ export default async function AdminLayout({
         nav={
           <>
             <Link href="/admin">Overview</Link>
+            <Link href="/admin/personas">Personas</Link>
+            <Link href="/admin/question-sets">Question sets</Link>
             <Link href="/admin/prompts">Prompts</Link>
             <Link href="/admin/admins">Admins</Link>
             <Link href="/dashboard">Dashboard</Link>

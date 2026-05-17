@@ -4,12 +4,27 @@ import { createServerSupabase } from "@/lib/supabase/server";
 export default async function AdminOverviewPage() {
   const supabase = await createServerSupabase();
 
-  const [{ count: promptCount }, { count: adminCount }, { count: teacherCount }] =
-    await Promise.all([
-      supabase.from("prompts").select("id", { count: "exact", head: true }),
-      supabase.from("admins").select("email", { count: "exact", head: true }),
-      supabase.from("teachers").select("id", { count: "exact", head: true }),
-    ]);
+  const [
+    { count: promptCount },
+    { count: adminCount },
+    { count: teacherCount },
+    { count: personaCount },
+    { count: qsetCount },
+    { count: questionCount },
+  ] = await Promise.all([
+    supabase.from("prompts").select("id", { count: "exact", head: true }),
+    supabase.from("admins").select("email", { count: "exact", head: true }),
+    supabase.from("teachers").select("id", { count: "exact", head: true }),
+    supabase
+      .from("personality_presets")
+      .select("id", { count: "exact", head: true })
+      .is("teacher_id", null),
+    supabase
+      .from("question_sets")
+      .select("id", { count: "exact", head: true })
+      .is("teacher_id", null),
+    supabase.from("questions").select("id", { count: "exact", head: true }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -22,10 +37,22 @@ export default async function AdminOverviewPage() {
 
       <div className="grid sm:grid-cols-3 gap-4">
         <Tile
+          label="Personality presets"
+          value={personaCount ?? 0}
+          href="/admin/personas"
+          hint="System personas (ChekhovBot, Book Club, Researcher, Study Partner)"
+        />
+        <Tile
+          label="Question sets"
+          value={qsetCount ?? 0}
+          href="/admin/question-sets"
+          hint={`${questionCount ?? 0} questions across all system sets`}
+        />
+        <Tile
           label="System prompts"
           value={promptCount ?? 0}
           href="/admin/prompts"
-          hint="voice_agent, summary, eval, rubric, transcription"
+          hint="Grading/summary/eval prompts (read-only for now)"
         />
         <Tile
           label="Admins"
@@ -40,16 +67,6 @@ export default async function AdminOverviewPage() {
           hint="Visible to admins; no actions yet"
         />
       </div>
-
-      <section className="surface p-5">
-        <h2 className="heading text-lg mb-3">Phase A admin surface</h2>
-        <p className="text-sm leading-relaxed">
-          Prompt editing, admin management, and retention sweeps are all wired
-          into the schema and route shells. The full CRUD UI ships in Phase D
-          alongside the diagnostic session view. For now this surface exists
-          so the admin layer is real (and self-bootstrap is verified).
-        </p>
-      </section>
     </div>
   );
 }

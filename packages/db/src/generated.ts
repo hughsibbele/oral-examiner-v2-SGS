@@ -241,54 +241,105 @@ export type Database = {
           archived_at: string | null
           canvas_assignment_id: string
           canvas_course_id: string
+          closing_text: string | null
           created_at: string
           duration_max_sec: number
           duration_min_sec: number
           exam_token: string
+          flow_body: string | null
           id: string
+          intake_config: Json
+          locked_at: string | null
           name: string
+          opening_text: string | null
+          parent_template_id: string | null
+          persona_body: string | null
+          personality_preset_id: string | null
           question_bank: Json
+          question_set_id: string | null
           reference_texts: Json
           rubric_version: string
           teacher_id: string
           topic_context: string | null
           updated_at: string
+          version_number: number
         }
         Insert: {
           archived_at?: string | null
           canvas_assignment_id: string
           canvas_course_id: string
+          closing_text?: string | null
           created_at?: string
           duration_max_sec?: number
           duration_min_sec?: number
           exam_token: string
+          flow_body?: string | null
           id?: string
+          intake_config?: Json
+          locked_at?: string | null
           name: string
+          opening_text?: string | null
+          parent_template_id?: string | null
+          persona_body?: string | null
+          personality_preset_id?: string | null
           question_bank?: Json
+          question_set_id?: string | null
           reference_texts?: Json
           rubric_version?: string
           teacher_id: string
           topic_context?: string | null
           updated_at?: string
+          version_number?: number
         }
         Update: {
           archived_at?: string | null
           canvas_assignment_id?: string
           canvas_course_id?: string
+          closing_text?: string | null
           created_at?: string
           duration_max_sec?: number
           duration_min_sec?: number
           exam_token?: string
+          flow_body?: string | null
           id?: string
+          intake_config?: Json
+          locked_at?: string | null
           name?: string
+          opening_text?: string | null
+          parent_template_id?: string | null
+          persona_body?: string | null
+          personality_preset_id?: string | null
           question_bank?: Json
+          question_set_id?: string | null
           reference_texts?: Json
           rubric_version?: string
           teacher_id?: string
           topic_context?: string | null
           updated_at?: string
+          version_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "exam_templates_parent_template_id_fkey"
+            columns: ["parent_template_id"]
+            isOneToOne: false
+            referencedRelation: "exam_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_templates_personality_preset_id_fkey"
+            columns: ["personality_preset_id"]
+            isOneToOne: false
+            referencedRelation: "personality_presets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_templates_question_set_id_fkey"
+            columns: ["question_set_id"]
+            isOneToOne: false
+            referencedRelation: "question_sets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "exam_templates_teacher_id_fkey"
             columns: ["teacher_id"]
@@ -333,6 +384,47 @@ export type Database = {
           },
         ]
       }
+      personality_presets: {
+        Row: {
+          created_at: string
+          description: string | null
+          flow_body: string
+          id: string
+          name: string
+          persona_body: string
+          teacher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          flow_body: string
+          id?: string
+          name: string
+          persona_body: string
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          flow_body?: string
+          id?: string
+          name?: string
+          persona_body?: string
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personality_presets_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prompts: {
         Row: {
           body: string
@@ -365,6 +457,117 @@ export type Database = {
           version?: number
         }
         Relationships: []
+      }
+      question_buckets: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          position: number
+          question_set_id: string
+          select_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          position: number
+          question_set_id: string
+          select_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          question_set_id?: string
+          select_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_buckets_question_set_id_fkey"
+            columns: ["question_set_id"]
+            isOneToOne: false
+            referencedRelation: "question_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_sets: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          teacher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_sets_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      questions: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          question_bucket_id: string
+          reference_snippet: string | null
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position: number
+          question_bucket_id: string
+          reference_snippet?: string | null
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          question_bucket_id?: string
+          reference_snippet?: string | null
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_question_bucket_id_fkey"
+            columns: ["question_bucket_id"]
+            isOneToOne: false
+            referencedRelation: "question_buckets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       students: {
         Row: {
