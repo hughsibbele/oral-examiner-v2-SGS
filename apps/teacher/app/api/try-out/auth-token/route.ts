@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI, Modality, ThinkingLevel } from "@google/genai";
 import { getTeacher } from "@/lib/auth/teacher";
+import { isAdmin } from "@/lib/auth/admin";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -42,39 +43,45 @@ export async function POST(req: Request) {
     );
   }
 
-  // Reserve dry-run minutes against the per-teacher cap. The Postgres function
-  // returns false if we'd exceed the cap; uses a separate column for dry-run
-  // so admin testing doesn't drain real-class budget.
+  // Reserve dry-run minutes against the per-teacher cap — unless the caller
+  // is an admin. Admins bypass the cap entirely (they're doing testing, not
+  // production teaching; pre-reservations from failed connect attempts can
+  // burn through a small cap quickly, as observed during the model-name
+  // debug pass). Non-admin teachers stay capped at
+  // gemini_live_dryrun_daily_cap_minutes (default 15/day).
   const supabase = await createServerSupabase();
+  const admin = await isAdmin();
   const teacherDryrunCap =
     teacher.gemini_live_dryrun_daily_cap_minutes ?? DEFAULT_DRYRUN_CAP_MINUTES;
 
-  // The existing check_and_increment_gemini_live_minutes function uses the
-  // `live_minutes` column. For dry-run we want a separate budget — we'd
-  // normally add a sister function, but for v1 we just call the same one
-  // with a tight cap. Real exams call it with the larger cap. Same column,
-  // so dry-runs DO compete with class minutes — flag this in 2b.1n notes.
-  const { data: allowed, error: rpcErr } = await supabase.rpc(
-    "check_and_increment_gemini_live_minutes",
-    {
-      p_teacher_id: teacher.id,
-      p_requested: SESSION_RESERVATION_MINUTES,
-      p_default_cap: teacherDryrunCap,
-    },
-  );
-  if (rpcErr) {
-    return NextResponse.json(
-      { error: `Quota check failed: ${rpcErr.message}` },
-      { status: 500 },
-    );
-  }
-  if (!allowed) {
-    return NextResponse.json(
+  if (!admin) {
+    // The existing check_and_increment_gemini_live_minutes function uses the
+    // `live_minutes` column. For dry-run we want a separate budget — we'd
+    // normally add a sister function, but for v1 we just call the same one
+    // with a tight cap. Real exams call it with the larger cap. Same column,
+    // so dry-runs DO compete with class minutes — flag this in 2b.1j notes.
+    const { data: allowed, error: rpcErr } = await supabase.rpc(
+      "check_and_increment_gemini_live_minutes",
       {
-        error: `Daily dry-run cap reached (${teacherDryrunCap} min). Try again tomorrow or raise gemini_live_dryrun_daily_cap_minutes on your teacher row.`,
+        p_teacher_id: teacher.id,
+        p_requested: SESSION_RESERVATION_MINUTES,
+        p_default_cap: teacherDryrunCap,
       },
-      { status: 429 },
     );
+    if (rpcErr) {
+      return NextResponse.json(
+        { error: `Quota check failed: ${rpcErr.message}` },
+        { status: 500 },
+      );
+    }
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          error: `Daily dry-run cap reached (${teacherDryrunCap} min). Try again tomorrow or raise gemini_live_dryrun_daily_cap_minutes on your teacher row.`,
+        },
+        { status: 429 },
+      );
+    }
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -129,7 +136,10 @@ export async function POST(req: Request) {
   return NextResponse.json({
     token: token.name,
     model: LIVE_MODEL,
-    reservedMinutes: SESSION_RESERVATION_MINUTES,
-    capMinutes: teacherDryrunCap,
+    // Null on admin bypass — the client uses this to suppress the
+    // "Reserved N min from your daily cap" line.
+    reservedMinutes: admin ? null : SESSION_RESERVATION_MINUTES,
+    capMinutes: admin ? null : teacherDryrunCap,
+    adminBypass: admin,
   });
 }
