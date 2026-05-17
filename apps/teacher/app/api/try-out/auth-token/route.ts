@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI, Modality, ThinkingLevel } from "@google/genai";
 import { getTeacher } from "@/lib/auth/teacher";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -10,7 +10,7 @@ const DEFAULT_DRYRUN_CAP_MINUTES = Number(
 );
 const SESSION_RESERVATION_MINUTES = 4; // each dry-run reserves this much; token expires alongside
 const LIVE_MODEL =
-  process.env.GEMINI_LIVE_MODEL ?? "gemini-2.5-flash-preview-native-audio-dialog";
+  process.env.GEMINI_LIVE_MODEL ?? "gemini-3.1-flash-live-preview";
 
 type Body = {
   systemPrompt: string;
@@ -105,6 +105,18 @@ export async function POST(req: Request) {
               : undefined,
             inputAudioTranscription: {},
             outputAudioTranscription: {},
+            // Gemini 3.1 thinking — "low" adds a small reasoning step before
+            // each response, lets the agent make smarter follow-up decisions
+            // on vague student answers without too much latency.
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            // Disable Gemini's auto turn detection. We run manual VAD on the
+            // client (TryItOut) so we can be very patient when the student
+            // hasn't started speaking (10s+) but snappy after they finish
+            // (~1.5s). Built-in silenceDurationMs is symmetric and can't
+            // distinguish those two cases.
+            realtimeInputConfig: {
+              automaticActivityDetection: { disabled: true },
+            },
           },
         },
       },

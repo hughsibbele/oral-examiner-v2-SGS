@@ -5,7 +5,7 @@ import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@go
 
 type TranscriptLine = { role: "user" | "model"; text: string };
 
-type Status =
+type Conversation =
   | { kind: "idle" }
   | { kind: "starting" }
   | { kind: "live" }
@@ -13,8 +13,22 @@ type Status =
   | { kind: "error"; msg: string }
   | { kind: "ended"; reason: string };
 
+// Client-side voice activity state machine, asymmetric:
+//   listening  — agent finished, no student speech yet (unlimited wait)
+//   recording  — student is speaking; sending audio + already sent activityStart
+//   trailing   — silence after speech; commit after TRAILING_MS or back to recording
+//   responding — sent activityEnd; waiting for the model to speak back
+type VadState = "listening" | "recording" | "trailing" | "responding";
+
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
+
+// Manual VAD tuning. Conservative defaults; raise RMS_THRESHOLD if a quiet
+// room is mistakenly registering as speech, lower if students with quiet
+// voices aren't being detected.
+const RMS_THRESHOLD = 0.012;           // ~-38 dBFS; speech vs. quiet room
+const SPEECH_ONSET_MS = 150;            // need this much continuous loudness to count as speech start
+const TRAILING_MS = 1500;               // silence after speech → end of student turn
 
 export function TryItOut({
   systemPrompt,
@@ -25,19 +39,31 @@ export function TryItOut({
   agentName: string;
   voiceName: string | null;
 }) {
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [status, setStatus] = useState<Conversation>({ kind: "idle" });
+  const [vad, setVad] = useState<VadState>("listening");
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const [reservedMinutes, setReservedMinutes] = useState<number | null>(null);
 
-  // Refs for resources we need to clean up.
+  // Resource refs we need to clean up.
   const sessionRef = useRef<Session | null>(null);
   const inputCtxRef = useRef<AudioContext | null>(null);
   const inputWorkletRef = useRef<AudioWorkletNode | null>(null);
   const inputStreamRef = useRef<MediaStream | null>(null);
   const outputCtxRef = useRef<AudioContext | null>(null);
-  const playbackHeadRef = useRef<number>(0); // next start time for queued chunks
+  const playbackHeadRef = useRef<number>(0);
   const currentUserTextRef = useRef<string>("");
   const currentModelTextRef = useRef<string>("");
+
+  // VAD state lives in refs because the worklet callback fires faster than
+  // React can re-render — we only setVad on transitions for the UI.
+  const vadRef = useRef<VadState>("listening");
+  const speechOnsetAtRef = useRef<number | null>(null);
+  const lastLoudFrameAtRef = useRef<number | null>(null);
+
+  const setVadState = useCallback((next: VadState) => {
+    vadRef.current = next;
+    setVad(next);
+  }, []);
 
   const cleanup = useCallback(() => {
     try {
@@ -57,18 +83,23 @@ export function TryItOut({
     playbackHeadRef.current = 0;
     currentUserTextRef.current = "";
     currentModelTextRef.current = "";
+    vadRef.current = "listening";
+    speechOnsetAtRef.current = null;
+    lastLoudFrameAtRef.current = null;
   }, []);
 
   useEffect(() => () => cleanup(), [cleanup]);
 
   async function start() {
-    if (status.kind !== "idle" && !("kind" in status && (status.kind === "ended" || status.kind === "error"))) {
+    if (!(status.kind === "idle" || status.kind === "ended" || status.kind === "error")) {
       return;
     }
     setStatus({ kind: "starting" });
     setTranscript([]);
+    setVadState("listening");
 
     let token: string;
+    let model: string;
     try {
       const res = await fetch("/api/try-out/auth-token", {
         method: "POST",
@@ -77,14 +108,16 @@ export function TryItOut({
       });
       const data = (await res.json()) as {
         token?: string;
+        model?: string;
         reservedMinutes?: number;
         capMinutes?: number;
         error?: string;
       };
-      if (!res.ok || !data.token) {
+      if (!res.ok || !data.token || !data.model) {
         throw new Error(data.error ?? `Token mint failed (${res.status})`);
       }
       token = data.token;
+      model = data.model;
       setReservedMinutes(data.reservedMinutes ?? null);
     } catch (err) {
       cleanup();
@@ -92,34 +125,36 @@ export function TryItOut({
       return;
     }
 
-    // Get mic permission early so we fail fast if the user denies.
+    // Mic permission early; fail fast if denied.
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, sampleRate: INPUT_SAMPLE_RATE, echoCancellation: true, noiseSuppression: true },
+        audio: {
+          channelCount: 1,
+          sampleRate: INPUT_SAMPLE_RATE,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
       });
     } catch (err) {
       cleanup();
       setStatus({
         kind: "error",
-        msg:
-          err instanceof Error
-            ? `Mic permission denied: ${err.message}`
-            : "Mic permission denied.",
+        msg: err instanceof Error ? `Mic permission denied: ${err.message}` : "Mic permission denied.",
       });
       return;
     }
     inputStreamRef.current = stream;
 
-    // Open the Live session with the ephemeral token.
+    // Open the Live session with the ephemeral token. Model is pinned in the
+    // token's liveConnectConstraints, but the SDK still requires it as a
+    // string here — pass it through from the auth-token response.
     const ai = new GoogleGenAI({ apiKey: token, apiVersion: "v1alpha" });
     let session: Session;
     try {
       session = await ai.live.connect({
-        model: "", // pinned via liveConnectConstraints in the token
-        config: {
-          responseModalities: [Modality.AUDIO],
-        },
+        model,
+        config: { responseModalities: [Modality.AUDIO] },
         callbacks: {
           onopen: () => {},
           onmessage: (msg) => handleServerMessage(msg),
@@ -138,15 +173,12 @@ export function TryItOut({
       sessionRef.current = session;
     } catch (err) {
       cleanup();
-      setStatus({
-        kind: "error",
-        msg: err instanceof Error ? err.message : "Live connect failed",
-      });
+      setStatus({ kind: "error", msg: err instanceof Error ? err.message : "Live connect failed" });
       return;
     }
 
-    // Set up the input audio pipeline: mic → AudioContext @ 16kHz → worklet
-    // → PCM16 base64 → session.sendRealtimeInput
+    // Input pipeline: mic → AudioContext @ 16kHz → worklet → main thread
+    // VAD + send → session.sendRealtimeInput
     try {
       const ctx = new AudioContext({ sampleRate: INPUT_SAMPLE_RATE });
       inputCtxRef.current = ctx;
@@ -156,20 +188,12 @@ export function TryItOut({
       inputWorkletRef.current = worklet;
       worklet.port.onmessage = (e: MessageEvent<Float32Array>) => {
         const float32 = e.data;
-        const pcm16 = float32ToInt16(float32);
-        const b64 = arrayBufferToBase64(pcm16.buffer as ArrayBuffer);
-        try {
-          session.sendRealtimeInput({
-            media: { data: b64, mimeType: `audio/pcm;rate=${INPUT_SAMPLE_RATE}` },
-          });
-        } catch {
-          /* session may be closing */
-        }
+        handleMicFrame(float32, session);
       };
       source.connect(worklet);
-      // Don't connect worklet to destination — we don't want mic echo.
+      // Don't connect worklet to destination — no mic echo.
 
-      // Output context for playing the model's audio at 24kHz.
+      // Output context for playing model's audio at 24kHz.
       outputCtxRef.current = new AudioContext({ sampleRate: OUTPUT_SAMPLE_RATE });
       playbackHeadRef.current = outputCtxRef.current.currentTime;
     } catch (err) {
@@ -179,6 +203,89 @@ export function TryItOut({
     }
 
     setStatus({ kind: "live" });
+  }
+
+  // Per-frame mic handler — runs the manual VAD state machine + streams audio
+  // to Gemini between activityStart and activityEnd. Only invoked from the
+  // worklet message callback (never during render), so impurity is fine.
+  function handleMicFrame(float32: Float32Array, session: Session) {
+    const rms = computeRms(float32);
+    const isLoud = rms > RMS_THRESHOLD;
+    // eslint-disable-next-line react-hooks/purity
+    const now = performance.now();
+    const current = vadRef.current;
+
+    // Always send audio frames while we're considered "active" (between
+    // activityStart and activityEnd). Manual VAD with disabled:true means
+    // Gemini ignores audio outside that window.
+    if (current === "recording" || current === "trailing") {
+      sendAudio(session, float32);
+    }
+
+    if (current === "listening") {
+      if (isLoud) {
+        if (speechOnsetAtRef.current === null) speechOnsetAtRef.current = now;
+        if (now - (speechOnsetAtRef.current ?? now) >= SPEECH_ONSET_MS) {
+          // Commit: student has started speaking.
+          try {
+            session.sendRealtimeInput({ activityStart: {} });
+          } catch {
+            /* session may be closing */
+          }
+          lastLoudFrameAtRef.current = now;
+          setVadState("recording");
+          // Send THIS frame too, since we just transitioned.
+          sendAudio(session, float32);
+        }
+      } else {
+        speechOnsetAtRef.current = null;
+      }
+      return;
+    }
+
+    if (current === "recording") {
+      if (isLoud) {
+        lastLoudFrameAtRef.current = now;
+      } else {
+        setVadState("trailing");
+      }
+      return;
+    }
+
+    if (current === "trailing") {
+      if (isLoud) {
+        lastLoudFrameAtRef.current = now;
+        setVadState("recording");
+      } else if (now - (lastLoudFrameAtRef.current ?? now) >= TRAILING_MS) {
+        // Commit: student is done. Send activityEnd; wait for model response.
+        try {
+          session.sendRealtimeInput({ activityEnd: {} });
+        } catch {
+          /* session may be closing */
+        }
+        speechOnsetAtRef.current = null;
+        lastLoudFrameAtRef.current = null;
+        setVadState("responding");
+      }
+      return;
+    }
+
+    // current === "responding": ignore mic until model finishes its turn.
+    // Note: if the student barges in (starts speaking over the agent), we
+    // currently ignore it. Could detect + restart by sending another
+    // activityStart, but for v1 keep it simple.
+  }
+
+  function sendAudio(session: Session, float32: Float32Array) {
+    const pcm16 = float32ToInt16(float32);
+    const b64 = arrayBufferToBase64(pcm16.buffer as ArrayBuffer);
+    try {
+      session.sendRealtimeInput({
+        media: { data: b64, mimeType: `audio/pcm;rate=${INPUT_SAMPLE_RATE}` },
+      });
+    } catch {
+      /* session may be closing */
+    }
   }
 
   function handleServerMessage(msg: LiveServerMessage) {
@@ -194,8 +301,7 @@ export function TryItOut({
       }
     }
 
-    // Live transcripts. Both input and output streams arrive incrementally;
-    // we accumulate per-turn and flush when the turn completes.
+    // Live transcripts. Accumulate per-turn, flush when the turn completes.
     const inputT = content.inputTranscription?.text;
     if (typeof inputT === "string" && inputT.length > 0) {
       currentUserTextRef.current += inputT;
@@ -216,6 +322,8 @@ export function TryItOut({
         if (modelText) next.push({ role: "model", text: modelText });
         return next;
       });
+      // Model done — back to listening for the next student turn.
+      setVadState("listening");
     }
   }
 
@@ -248,7 +356,7 @@ export function TryItOut({
         <div>
           <h2 className="heading text-lg">Talk to {agentName}</h2>
           <p className="muted text-xs">
-            Real Gemini Live audio. You speak; the agent speaks back.{" "}
+            Real Gemini Live audio.{" "}
             {voiceName ? (
               <>
                 Voice: <code>{voiceName}</code>.
@@ -256,13 +364,12 @@ export function TryItOut({
             ) : (
               "Default voice."
             )}{" "}
-            {reservedMinutes != null && (
-              <>Reserved {reservedMinutes} min from your daily dry-run cap.</>
-            )}
+            {reservedMinutes != null && <>Reserved {reservedMinutes} min from your daily cap.</>}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <StatusPill status={status} />
+          {status.kind === "live" && <VadPill vad={vad} />}
+          <ConvoPill status={status} />
           {canStart ? (
             <button
               type="button"
@@ -287,7 +394,8 @@ export function TryItOut({
       <div className="bg-paper px-4 py-4 min-h-[260px] max-h-[60vh] overflow-y-auto space-y-3">
         {transcript.length === 0 && status.kind === "live" && (
           <p className="muted text-sm text-center py-12">
-            Listening… start speaking. Transcript appears here as you talk.
+            Connected. Wait for the agent to greet you — then speak naturally.
+            Pause as long as you need to think; the agent won&apos;t interrupt.
           </p>
         )}
         {transcript.length === 0 && status.kind !== "live" && (
@@ -316,8 +424,19 @@ export function TryItOut({
   );
 }
 
-function StatusPill({ status }: { status: Status }) {
-  const map: Record<Status["kind"], { label: string; cls: string }> = {
+function VadPill({ vad }: { vad: VadState }) {
+  const map: Record<VadState, { label: string; cls: string }> = {
+    listening: { label: "Listening", cls: "bg-paper text-ink/70" },
+    recording: { label: "● Recording you", cls: "bg-green-100 text-green-900" },
+    trailing: { label: "(brief pause…)", cls: "bg-amber-100 text-amber-900" },
+    responding: { label: "Agent speaking", cls: "bg-blue-100 text-blue-900" },
+  };
+  const m = map[vad];
+  return <span className={`text-xs px-2 py-1 rounded ${m.cls}`}>{m.label}</span>;
+}
+
+function ConvoPill({ status }: { status: Conversation }) {
+  const map: Record<Conversation["kind"], { label: string; cls: string }> = {
     idle: { label: "Idle", cls: "bg-paper text-ink/70" },
     starting: { label: "Connecting…", cls: "bg-amber-100 text-amber-900" },
     live: { label: "● Live", cls: "bg-green-100 text-green-900" },
@@ -355,7 +474,13 @@ function Bubble({
   );
 }
 
-// ---- PCM <-> base64 helpers --------------------------------------------------
+// ---- helpers ----------------------------------------------------------------
+
+function computeRms(float32: Float32Array): number {
+  let sumSq = 0;
+  for (let i = 0; i < float32.length; i++) sumSq += float32[i] * float32[i];
+  return Math.sqrt(sumSq / float32.length);
+}
 
 function float32ToInt16(float32: Float32Array): Int16Array {
   const out = new Int16Array(float32.length);
