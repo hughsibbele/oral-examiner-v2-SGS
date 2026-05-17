@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth/admin";
+import { getTeacher } from "@/lib/auth/teacher";
 import { selectQuestionsForSet } from "@/lib/runtime/select-questions";
 import { assembleSystemPrompt } from "@/lib/runtime/assemble-prompt";
 import { TryItOut } from "./TryItOut";
@@ -11,7 +11,8 @@ export default async function TryItOutPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdmin();
+  const teacherCtx = await getTeacher();
+  if (!teacherCtx) redirect("/login");
   const { id } = await params;
   const supabase = await createServerSupabase();
 
@@ -72,7 +73,7 @@ export default async function TryItOutPage({
     <div className="space-y-5">
       <div className="flex items-baseline justify-between gap-4">
         <div>
-          <Link href="/admin/agents" className="text-sm text-maroon no-underline hover:underline">
+          <Link href="/dashboard/agents" className="text-sm text-maroon no-underline hover:underline">
             ← All agents
           </Link>
           <h1 className="heading text-2xl mt-2">Try it out — {persona.name}</h1>

@@ -70,7 +70,7 @@ export function TryItOut({
 
     let token: string;
     try {
-      const res = await fetch("/api/admin/dry-run/auth-token", {
+      const res = await fetch("/api/try-out/auth-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ systemPrompt, voiceName }),

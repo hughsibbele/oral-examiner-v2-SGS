@@ -22,6 +22,7 @@ export default async function DashboardLayout({
         nav={
           <>
             <Link href="/dashboard">Dashboard</Link>
+            <Link href="/dashboard/agents">Agents</Link>
             {showAdminLink && <Link href="/admin">Admin</Link>}
             <form action="/auth/signout" method="post" className="inline">
               <button type="submit" className="btn">

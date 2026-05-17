@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI, Modality } from "@google/genai";
-import { requireAdmin } from "@/lib/auth/admin";
+import { getTeacher } from "@/lib/auth/teacher";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -18,12 +18,11 @@ type Body = {
 };
 
 export async function POST(req: Request) {
-  let admin;
-  try {
-    admin = await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+  const teacherCtx = await getTeacher();
+  if (!teacherCtx) {
+    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
+  const teacher = teacherCtx.teacher;
 
   let body: Body;
   try {
@@ -48,7 +47,7 @@ export async function POST(req: Request) {
   // so admin testing doesn't drain real-class budget.
   const supabase = await createServerSupabase();
   const teacherDryrunCap =
-    admin.teacher.gemini_live_dryrun_daily_cap_minutes ?? DEFAULT_DRYRUN_CAP_MINUTES;
+    teacher.gemini_live_dryrun_daily_cap_minutes ?? DEFAULT_DRYRUN_CAP_MINUTES;
 
   // The existing check_and_increment_gemini_live_minutes function uses the
   // `live_minutes` column. For dry-run we want a separate budget — we'd
@@ -58,7 +57,7 @@ export async function POST(req: Request) {
   const { data: allowed, error: rpcErr } = await supabase.rpc(
     "check_and_increment_gemini_live_minutes",
     {
-      p_teacher_id: admin.teacher.id,
+      p_teacher_id: teacher.id,
       p_requested: SESSION_RESERVATION_MINUTES,
       p_default_cap: teacherDryrunCap,
     },
