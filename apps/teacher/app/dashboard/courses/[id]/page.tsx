@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { RefreshAssignmentsButton } from "./RefreshAssignmentsButton";
+import { RefreshRosterButton } from "./RefreshRosterButton";
 
 type CoursePayload = {
   id: number;
@@ -22,6 +23,18 @@ type AssignmentPayload = {
 type AssignmentRow = {
   canvas_assignment_id: string;
   payload: AssignmentPayload;
+  last_synced_at: string;
+};
+
+type RosterStudent = {
+  canvas_user_id: string;
+  display_name: string;
+  email: string;
+  anon_token: string;
+};
+
+type RosterRow = {
+  students: RosterStudent[];
   last_synced_at: string;
 };
 
@@ -49,6 +62,14 @@ export default async function CoursePage({
     .order("last_synced_at", { ascending: false });
 
   const assignments = (assignmentRows ?? []) as unknown as AssignmentRow[];
+
+  const { data: rosterRow } = await supabase
+    .from("course_rosters")
+    .select("students, last_synced_at")
+    .eq("canvas_course_id", canvasCourseId)
+    .maybeSingle();
+  const roster = rosterRow as unknown as RosterRow | null;
+  const rosterStudents = roster?.students ?? [];
 
   return (
     <div className="space-y-6">
@@ -104,6 +125,29 @@ export default async function CoursePage({
           {assignments.length} published assignment{assignments.length === 1 ? "" : "s"}.
           Per-template authoring + branded-card install ship in the Phase 2 follow-on.
         </p>
+      </section>
+
+      <section className="surface p-5">
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="heading text-lg">Roster</h2>
+          <RefreshRosterButton canvasCourseId={canvasCourseId} />
+        </div>
+
+        {rosterStudents.length === 0 ? (
+          <p className="text-sm muted">
+            No roster synced yet. Refresh from Canvas to populate. Student
+            identifiers are anonymized at sync time; raw names never leave
+            the teacher&apos;s browser session.
+          </p>
+        ) : (
+          <p className="text-sm muted">
+            {rosterStudents.length} student{rosterStudents.length === 1 ? "" : "s"} synced
+            {roster?.last_synced_at && (
+              <> · last synced {new Date(roster.last_synced_at).toLocaleString()}</>
+            )}
+            .
+          </p>
+        )}
       </section>
     </div>
   );

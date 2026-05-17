@@ -48,6 +48,25 @@ export type CanvasAssignment = {
   has_submitted_submissions?: boolean;
 };
 
+export type CanvasEnrollmentUser = {
+  id: number;
+  name: string;
+  sortable_name?: string;
+  short_name?: string;
+  email?: string | null;
+  login_id?: string | null;
+};
+
+export type CanvasEnrollment = {
+  id: number;
+  user_id: number;
+  course_id: number;
+  course_section_id: number;
+  enrollment_state: string;
+  type: string;
+  user?: CanvasEnrollmentUser;
+};
+
 export class CanvasError extends Error {
   constructor(
     message: string,
@@ -199,4 +218,19 @@ export async function getAssignment(
     );
   }
   return (await res.json()) as CanvasAssignment;
+}
+
+/**
+ * Active student enrollments for a course, with embedded user records. One
+ * row per (user, section); a user enrolled in two sections appears twice.
+ * Caller deduplicates by `user.id` when shaping the roster.
+ */
+export async function listCourseStudentEnrollments(
+  config: CanvasConfig,
+  canvasCourseId: string | number,
+): Promise<CanvasEnrollment[]> {
+  const path =
+    `/courses/${canvasCourseId}/enrollments?` +
+    "type[]=StudentEnrollment&state[]=active&include[]=user&per_page=100";
+  return paginate<CanvasEnrollment>(config, path);
 }

@@ -1,8 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { listTeachingCourses, listCourseAssignments, CanvasError } from "@oral-examiner/canvas";
+import {
+  listTeachingCourses,
+  listCourseAssignments,
+  listCourseStudentEnrollments,
+  CanvasError,
+} from "@oral-examiner/canvas";
 import type { Json } from "@oral-examiner/db";
+import { anonToken, readSaltFromEnv } from "@oral-examiner/anonymizer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCanvasConfigForTeacher } from "@/lib/canvas/server";
 
@@ -109,4 +115,94 @@ export async function refreshAssignments(canvasCourseId: string): Promise<{
 
   revalidatePath(`/dashboard/courses/${canvasCourseId}`);
   return { ok: true, count: rows.length };
+}
+
+export async function refreshRoster(canvasCourseId: string): Promise<{
+  ok: boolean;
+  students?: number;
+  skipped?: number;
+  error?: string;
+}> {
+  const canvas = await getCanvasConfigForTeacher();
+  if (!canvas) {
+    return { ok: false, error: "Canvas token not configured." };
+  }
+
+  let salt: string;
+  try {
+    salt = readSaltFromEnv();
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Salt missing." };
+  }
+
+  let enrollments;
+  try {
+    enrollments = await listCourseStudentEnrollments(canvas.config, canvasCourseId);
+  } catch (err) {
+    if (err instanceof CanvasError) return { ok: false, error: err.message };
+    return { ok: false, error: err instanceof Error ? err.message : "Canvas fetch failed." };
+  }
+
+  // Dedupe by canvas user_id; a student in two sections appears twice.
+  type Roster = {
+    canvas_user_id: string;
+    display_name: string;
+    email: string;
+    anon_token: string;
+  };
+  const byUser = new Map<string, Roster>();
+  let skipped = 0;
+  for (const e of enrollments) {
+    if (!e.user) {
+      skipped++;
+      continue;
+    }
+    const cuid = String(e.user.id);
+    if (byUser.has(cuid)) continue;
+    const email = (e.user.email ?? e.user.login_id ?? "").trim().toLowerCase();
+    if (!email) {
+      // students.email is NOT NULL; can't materialize without an identifier.
+      skipped++;
+      continue;
+    }
+    byUser.set(cuid, {
+      canvas_user_id: cuid,
+      display_name: e.user.name,
+      email,
+      anon_token: anonToken(cuid, email, salt),
+    });
+  }
+
+  const students = Array.from(byUser.values());
+  const syncedAt = new Date().toISOString();
+  const admin = createAdminClient();
+
+  if (students.length > 0) {
+    const { error: stuErr } = await admin
+      .from("students")
+      .upsert(
+        students.map((s) => ({
+          canvas_user_id: s.canvas_user_id,
+          email: s.email,
+          display_name: s.display_name,
+          anon_token: s.anon_token,
+        })),
+        { onConflict: "canvas_user_id" },
+      );
+    if (stuErr) return { ok: false, error: `Students write failed: ${stuErr.message}` };
+  }
+
+  const { error: rosterErr } = await admin.from("course_rosters").upsert(
+    {
+      teacher_id: canvas.teacherId,
+      canvas_course_id: canvasCourseId,
+      students: students as unknown as Json,
+      last_synced_at: syncedAt,
+    },
+    { onConflict: "teacher_id,canvas_course_id" },
+  );
+  if (rosterErr) return { ok: false, error: `Roster write failed: ${rosterErr.message}` };
+
+  revalidatePath(`/dashboard/courses/${canvasCourseId}`);
+  return { ok: true, students: students.length, skipped };
 }
