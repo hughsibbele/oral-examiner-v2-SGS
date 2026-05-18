@@ -6,10 +6,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const DEFAULT_DRYRUN_CAP_MINUTES = Number(
-  process.env.GEMINI_LIVE_DRYRUN_DEFAULT_DAILY_CAP_MINUTES ?? "15",
-);
-const SESSION_RESERVATION_MINUTES = 4; // each dry-run reserves this much; token expires alongside
+import { SESSION_RESERVATION_MINUTES, DEFAULT_DRYRUN_CAP_MINUTES } from "../constants";
 const LIVE_MODEL =
   process.env.GEMINI_LIVE_MODEL ?? "gemini-3.1-flash-live-preview";
 
@@ -143,3 +140,4 @@ export async function POST(req: Request) {
     adminBypass: admin,
   });
 }
+

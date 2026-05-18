@@ -301,13 +301,21 @@ export function TemplateEditor({
                 : `${overrideCount} field${overrideCount === 1 ? "" : "s"} overridden`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="text-xs text-red-700 underline hover:no-underline"
-          >
-            Delete template
-          </button>
+          <div className="flex items-baseline gap-3">
+            <Link
+              href={`/dashboard/agents/templates/${template.id}/try`}
+              className="text-xs text-maroon no-underline hover:underline"
+            >
+              Try it out →
+            </Link>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-xs text-red-700 underline hover:no-underline"
+            >
+              Delete template
+            </button>
+          </div>
         </div>
       </section>
 

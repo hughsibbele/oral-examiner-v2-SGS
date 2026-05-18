@@ -879,6 +879,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      refund_gemini_live_minutes: {
+        Args: { p_teacher_id: string; p_minutes: number }
+        Returns: undefined
+      }
     }
     Enums: {
       exam_session_state:

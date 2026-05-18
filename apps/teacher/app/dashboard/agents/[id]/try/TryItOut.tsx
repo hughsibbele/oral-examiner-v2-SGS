@@ -44,6 +44,7 @@ export function TryItOut({
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const [reservedMinutes, setReservedMinutes] = useState<number | null>(null);
   const [adminBypass, setAdminBypass] = useState(false);
+  const [refundedMinutes, setRefundedMinutes] = useState<number | null>(null);
 
   // Resource refs we need to clean up.
   const sessionRef = useRef<Session | null>(null);
@@ -54,6 +55,12 @@ export function TryItOut({
   const playbackHeadRef = useRef<number>(0);
   const currentUserTextRef = useRef<string>("");
   const currentModelTextRef = useRef<string>("");
+  // Wall-clock start of the live session — used to compute actualSeconds
+  // for the refund-on-close call. Null when no session is in flight or
+  // refund has already been posted (post-once guarantee). Lives in a ref
+  // because cleanup() runs from multiple paths (stop button, error,
+  // unmount, server-close) and we want exactly one refund per session.
+  const sessionStartedAtRef = useRef<number | null>(null);
 
   // VAD state lives in refs because the worklet callback fires faster than
   // React can re-render — we only setVad on transitions for the UI.
@@ -87,6 +94,31 @@ export function TryItOut({
     vadRef.current = "listening";
     speechOnsetAtRef.current = null;
     lastLoudFrameAtRef.current = null;
+
+    // Refund-on-close (M2b.5b.10). Fire-and-forget — if the request fails
+    // (offline, server down), the teacher's daily count just doesn't get
+    // credited back; same outcome as the pre-refund behavior. Capture
+    // start-time, then clear the ref so duplicate cleanup calls (stop +
+    // server close, unmount + stop) don't double-refund.
+    const startedAt = sessionStartedAtRef.current;
+    sessionStartedAtRef.current = null;
+    if (startedAt != null) {
+      const actualSeconds = Math.max(0, (Date.now() - startedAt) / 1000);
+      fetch("/api/try-out/refund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actualSeconds }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { refundedMinutes?: number } | null) => {
+          if (data && typeof data.refundedMinutes === "number") {
+            setRefundedMinutes(data.refundedMinutes);
+          }
+        })
+        .catch(() => {
+          /* refund best-effort; ignore */
+        });
+    }
   }, []);
 
   useEffect(() => () => cleanup(), [cleanup]);
@@ -240,6 +272,9 @@ export function TryItOut({
     // status pill shows "Agent speaking" while it starts up, then handleServer
     // Message's turnComplete will flip back to "listening".
     setVadState("responding");
+    // eslint-disable-next-line react-hooks/purity
+    sessionStartedAtRef.current = Date.now();
+    setRefundedMinutes(null);
     setStatus({ kind: "live" });
   }
 
@@ -407,7 +442,19 @@ export function TryItOut({
             )}{" "}
             {adminBypass
               ? "Admin — no daily cap."
-              : reservedMinutes != null && <>Reserved {reservedMinutes} min from your daily cap.</>}
+              : reservedMinutes != null && (
+                  <>
+                    Reserved {reservedMinutes} min from your daily cap.
+                    {refundedMinutes != null && refundedMinutes > 0 && (
+                      <>
+                        {" "}
+                        <span className="text-green-700">
+                          Refunded {refundedMinutes} min after close.
+                        </span>
+                      </>
+                    )}
+                  </>
+                )}
           </p>
         </div>
         <div className="flex items-center gap-2">
