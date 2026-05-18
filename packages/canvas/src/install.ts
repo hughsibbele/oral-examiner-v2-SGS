@@ -52,10 +52,12 @@ export function buildExamCardBlock(args: BuildExamCardArgs): string {
   }
   const assignmentId = escapeMarkerAttr(args.canvasAssignmentId);
   const examUrl = escapeHtmlAttr(`${base}/exam/${assignmentId}`);
+  const logoUrl = escapeHtmlAttr(`${base}/brand/ehs-horizontal.webp`);
   return [
     `<!-- oral-examiner:card:begin v=${SCHEMA_VERSION} assignment-id=${assignmentId} -->`,
     `<div style="border:2px solid #7a1e46;border-radius:4px;padding:28px;margin:16px 0;background:#ffffff;font-family:Georgia,'Times New Roman',serif;">`,
-    `<div style="color:#54565b;font-size:11px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">Episcopal High School &middot; Oral Defense</div>`,
+    `<img src="${logoUrl}" alt="Episcopal High School" style="display:block;height:50px;width:auto;margin-bottom:18px;" />`,
+    `<div style="color:#54565b;font-size:11px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">Oral Defense &middot; Required for credit</div>`,
     `<h3 style="margin:0 0 10px 0;color:#1a1a1a;font-size:20px;font-weight:normal;line-height:1.3;">Defend this assignment in a brief oral exam</h3>`,
     `<p style="margin:0 0 22px 0;color:#333;font-size:15px;line-height:1.6;">You&rsquo;ll have a short spoken conversation with an AI examiner about your work. Find a quiet room with a working microphone; the exam takes about 10&ndash;15 minutes and submits to Canvas automatically when you&rsquo;re done.</p>`,
     `<a href="${examUrl}" style="display:inline-block;padding:12px 26px;background:#7a1e46;color:#ffffff;border-radius:3px;text-decoration:none;font-family:Georgia,'Times New Roman',serif;font-weight:bold;font-size:15px;letter-spacing:0.3px;">Start oral exam &rarr;</a>`,
@@ -88,6 +90,22 @@ export function findExamCardMarkerBlock(html: string): FoundExamCardBlock | null
 
 export function hasExamCardMarkerBlock(html: string): boolean {
   return findExamCardMarkerBlock(html) !== null;
+}
+
+/**
+ * "Is the card installed?" detector that handles Canvas's HTML sanitizer
+ * dropping our `<!-- ... -->` markers. Tries the marker block first; if
+ * absent, falls back to finding a bare card by the /exam/<id> anchor.
+ *
+ * Use this instead of `hasExamCardMarkerBlock` in any UI surface that
+ * reflects install state — Canvas strips comments on edit paths, so the
+ * marker-only check returns false even when the card is live in Canvas.
+ */
+export function hasExamCardBlock(
+  html: string,
+  canvasAssignmentId?: string,
+): boolean {
+  return findExamCardBlock(html, canvasAssignmentId) !== null;
 }
 
 /**

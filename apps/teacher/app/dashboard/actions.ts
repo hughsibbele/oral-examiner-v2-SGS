@@ -1,6 +1,5 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import {
   listTeachingCourses,
@@ -17,6 +16,7 @@ import type { Json } from "@oral-examiner/db";
 import { anonToken, readSaltFromEnv } from "@oral-examiner/anonymizer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCanvasConfigForTeacher } from "@/lib/canvas/server";
+import { isActiveTerm } from "@/lib/sync/active-term";
 
 function readAppBaseUrl(): string {
   const url =
@@ -31,25 +31,11 @@ function readAppBaseUrl(): string {
   return url;
 }
 
-/**
- * Active-term filter: pulls only courses whose name OR course_code starts with
- * the current academic-year prefix (e.g. `2025/2026` for May 2026). Inherited
- * from AI Documenter's 10x sync-time reduction. EHS course names follow that
- * prefix convention; if a course doesn't match it falls through to the cache.
- */
-function activeTermPrefixForToday(today: Date = new Date()): string {
-  // Academic year starts ~August. If we're past July, "year/year+1"; else "year-1/year".
-  const m = today.getMonth(); // 0-11
-  const y = today.getFullYear();
-  return m >= 7 ? `${y}/${y + 1}` : `${y - 1}/${y}`;
-}
-
-function courseMatchesActiveTerm(name: string | undefined, code: string | undefined): boolean {
-  const prefix = activeTermPrefixForToday();
-  return (
-    (name?.startsWith(prefix) ?? false) || (code?.startsWith(prefix) ?? false)
-  );
-}
+// Active-term filtering lives in lib/sync/active-term.ts and reads
+// payload.term.name (e.g. "2025/2026 - High School - 1st Semester").
+// Filtering on course name / course_code (the earlier approach) missed
+// EHS's "2526-..." course-name prefix convention; term.name is the
+// canonical academic-year tag on Canvas.
 
 export async function refreshCourses(): Promise<{
   ok: boolean;
@@ -70,7 +56,7 @@ export async function refreshCourses(): Promise<{
     return { ok: false, error: err instanceof Error ? err.message : "Canvas fetch failed." };
   }
 
-  const filtered = courses.filter((c) => courseMatchesActiveTerm(c.name, c.course_code));
+  const filtered = courses.filter((c) => isActiveTerm(c.term?.name));
   const toCache = filtered.length > 0 ? filtered : courses; // fail-open if nothing matched
 
   const admin = createAdminClient();
@@ -93,6 +79,102 @@ export async function refreshCourses(): Promise<{
     ok: true,
     count: rows.length,
     filtered: courses.length - rows.length,
+  };
+}
+
+/**
+ * Unified "Refresh from Canvas" action for the dashboard accordion. Fetches
+ * teaching courses + assignments for every active-term course in one click,
+ * mirroring AI Documenter's `refreshCanvas` pattern. Per-course `refreshAssignments`
+ * stays available for callers (admin tooling, future cron) that need just one.
+ */
+export async function refreshAllCanvas(): Promise<{
+  ok: boolean;
+  courseCount?: number;
+  assignmentCount?: number;
+  error?: string;
+}> {
+  const canvas = await getCanvasConfigForTeacher();
+  if (!canvas) {
+    return { ok: false, error: "Canvas token not configured. Visit /dashboard/canvas." };
+  }
+
+  let courses;
+  try {
+    courses = await listTeachingCourses(canvas.config);
+  } catch (err) {
+    if (err instanceof CanvasError) return { ok: false, error: err.message };
+    return { ok: false, error: err instanceof Error ? err.message : "Canvas fetch failed." };
+  }
+
+  const filteredCourses = courses.filter((c) => isActiveTerm(c.term?.name));
+  // Fail-open: if nothing matched the term filter, cache them all so a brand-
+  // new term that doesn't fit the prefix still surfaces. The dashboard render
+  // still partitions into active vs other.
+  const coursesToCache = filteredCourses.length > 0 ? filteredCourses : courses;
+
+  const syncedAt = new Date().toISOString();
+  const admin = createAdminClient();
+
+  const courseRows = coursesToCache.map((c) => ({
+    teacher_id: canvas.teacherId,
+    canvas_course_id: String(c.id),
+    payload: c as unknown as Json,
+    last_synced_at: syncedAt,
+  }));
+  if (courseRows.length > 0) {
+    const { error: courseErr } = await admin
+      .from("canvas_course_cache")
+      .upsert(courseRows, { onConflict: "teacher_id,canvas_course_id" });
+    if (courseErr) {
+      return { ok: false, error: `Course cache write failed: ${courseErr.message}` };
+    }
+  }
+
+  // Pull assignments only for active-term courses; previous terms shouldn't
+  // burn Canvas API budget on every refresh.
+  let assignmentTotal = 0;
+  const assignmentErrors: string[] = [];
+  for (const c of filteredCourses) {
+    const courseId = String(c.id);
+    try {
+      const assignments = await listCourseAssignments(canvas.config, courseId);
+      const rows = assignments
+        .filter((a) => a.workflow_state === "published")
+        .map((a) => ({
+          teacher_id: canvas.teacherId,
+          canvas_assignment_id: String(a.id),
+          canvas_course_id: courseId,
+          payload: a as unknown as Json,
+          last_synced_at: syncedAt,
+        }));
+      if (rows.length > 0) {
+        const { error: asgErr } = await admin
+          .from("canvas_assignment_cache")
+          .upsert(rows, { onConflict: "teacher_id,canvas_assignment_id" });
+        if (asgErr) assignmentErrors.push(`${c.name}: ${asgErr.message}`);
+        else assignmentTotal += rows.length;
+      }
+    } catch (err) {
+      const msg = err instanceof CanvasError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Canvas fetch failed.";
+      assignmentErrors.push(`${c.name}: ${msg}`);
+    }
+  }
+
+  revalidatePath("/dashboard");
+
+  if (assignmentErrors.length > 0 && assignmentTotal === 0) {
+    return { ok: false, error: `Assignment sync failed: ${assignmentErrors[0]}` };
+  }
+
+  return {
+    ok: true,
+    courseCount: courseRows.length,
+    assignmentCount: assignmentTotal,
   };
 }
 
@@ -247,6 +329,26 @@ export async function installOralExamCard({
     return { ok: false, error: "Canvas token not configured." };
   }
 
+  // Invariant guard: every Canvas card has to have an agent assigned. This
+  // entry point is reached from the dashboard accordion (re-install path)
+  // and the assignment configure page's InstallCardButton (UI-gated to
+  // disabled). Server-side check is defense-in-depth — the client-side
+  // disable can be bypassed by direct callers.
+  const adminClient = createAdminClient();
+  const { data: existingBinding } = await adminClient
+    .from("exam_template_bindings")
+    .select("exam_template_id, personality_preset_id")
+    .eq("teacher_id", canvas.teacherId)
+    .eq("canvas_assignment_id", canvasAssignmentId)
+    .maybeSingle();
+  if (!existingBinding) {
+    return {
+      ok: false,
+      error:
+        "Pick an agent template before installing the Canvas card — cards without an agent route students nowhere.",
+    };
+  }
+
   let appBaseUrl: string;
   try {
     appBaseUrl = readAppBaseUrl();
@@ -269,8 +371,7 @@ export async function installOralExamCard({
       nextDescription,
     );
 
-    const admin = createAdminClient();
-    await admin
+    await adminClient
       .from("canvas_assignment_cache")
       .upsert(
         {
@@ -283,7 +384,11 @@ export async function installOralExamCard({
         { onConflict: "teacher_id,canvas_assignment_id" },
       );
 
+    revalidatePath("/dashboard");
     revalidatePath(`/dashboard/courses/${canvasCourseId}`);
+    revalidatePath(
+      `/dashboard/courses/${canvasCourseId}/assignments/${canvasAssignmentId}`,
+    );
     return { ok: true };
   } catch (err) {
     if (err instanceof CanvasError) return { ok: false, error: err.message };
@@ -311,6 +416,7 @@ export async function uninstallOralExamCard({
     );
     if (nextDescription === (current.description ?? "")) {
       // Nothing to remove — refresh cache anyway and report ok.
+      revalidatePath("/dashboard");
       revalidatePath(`/dashboard/courses/${canvasCourseId}`);
       return { ok: true };
     }
@@ -335,7 +441,22 @@ export async function uninstallOralExamCard({
         { onConflict: "teacher_id,canvas_assignment_id" },
       );
 
+    // Uninstalling the card also drops the binding — keeping the binding
+    // around with no card in Canvas leaves a phantom "this assignment has
+    // an agent assigned" state in the dashboard. One invariant: card and
+    // binding move together.
+    await admin
+      .from("exam_template_bindings")
+      .delete()
+      .eq("teacher_id", canvas.teacherId)
+      .eq("canvas_assignment_id", canvasAssignmentId);
+
+    revalidatePath("/dashboard");
     revalidatePath(`/dashboard/courses/${canvasCourseId}`);
+    revalidatePath(
+      `/dashboard/courses/${canvasCourseId}/assignments/${canvasAssignmentId}`,
+    );
+    revalidatePath("/dashboard/agents");
     return { ok: true };
   } catch (err) {
     if (err instanceof CanvasError) return { ok: false, error: err.message };
@@ -343,175 +464,8 @@ export async function uninstallOralExamCard({
   }
 }
 
-type CloneResult =
-  | { ok: true; templateId: string; created: boolean }
-  | { ok: false; error: string };
-
-/**
- * Clone a personality_preset into a per-(teacher, canvas_assignment)
- * exam_template. Idempotent: if a template already exists for the pair,
- * return its id with created=false. The prose fields (persona_body, flow_body,
- * opening_text, closing_text) stay null on the new row — the runtime
- * assembler will fall back to the preset until the teacher edits them. The
- * template carries question_set_id (= preset.default_question_set_id) so the
- * server-side random question selection has something to pick from.
- *
- * RLS scopes preset reads to teacher-owned + system-seeded rows; teachers can
- * only insert exam_templates rows owned by themselves.
- */
-export async function cloneAgentToTemplate({
-  canvasCourseId,
-  canvasAssignmentId,
-  presetId,
-}: {
-  canvasCourseId: string;
-  canvasAssignmentId: string;
-  presetId: string;
-}): Promise<CloneResult> {
-  const canvas = await getCanvasConfigForTeacher();
-  if (!canvas) {
-    return { ok: false, error: "Canvas token not configured." };
-  }
-
-  const admin = createAdminClient();
-
-  // Already configured for this assignment? Return existing.
-  const { data: existing } = await admin
-    .from("exam_templates")
-    .select("id")
-    .eq("teacher_id", canvas.teacherId)
-    .eq("canvas_assignment_id", canvasAssignmentId)
-    .maybeSingle();
-  if (existing) {
-    return { ok: true, templateId: existing.id as string, created: false };
-  }
-
-  // Preset must be visible to this teacher (system-seeded OR owned).
-  const { data: preset, error: presetErr } = await admin
-    .from("personality_presets")
-    .select("id, name, default_question_set_id, teacher_id")
-    .eq("id", presetId)
-    .maybeSingle();
-  if (presetErr || !preset) {
-    return { ok: false, error: "Personality preset not found." };
-  }
-  if (preset.teacher_id && preset.teacher_id !== canvas.teacherId) {
-    return { ok: false, error: "That agent isn't available to your account." };
-  }
-
-  // Best-effort assignment-name lookup so the new template carries a
-  // human-readable name. The cache may be stale or absent; fall back to the
-  // preset name + assignment id.
-  const { data: cacheRow } = await admin
-    .from("canvas_assignment_cache")
-    .select("payload")
-    .eq("teacher_id", canvas.teacherId)
-    .eq("canvas_assignment_id", canvasAssignmentId)
-    .maybeSingle();
-  type CachedAssignment = { name?: string };
-  const cached = (cacheRow?.payload as unknown as CachedAssignment | null) ?? null;
-  const templateName = cached?.name
-    ? `${preset.name} · ${cached.name}`
-    : `${preset.name} · assignment ${canvasAssignmentId}`;
-
-  const examToken = randomBytes(8).toString("hex"); // 16 hex chars
-
-  const { data: inserted, error: insErr } = await admin
-    .from("exam_templates")
-    .insert({
-      teacher_id: canvas.teacherId,
-      canvas_assignment_id: canvasAssignmentId,
-      canvas_course_id: canvasCourseId,
-      name: templateName,
-      personality_preset_id: preset.id,
-      question_set_id: preset.default_question_set_id,
-      exam_token: examToken,
-    })
-    .select("id")
-    .single();
-  if (insErr || !inserted) {
-    return { ok: false, error: `Template insert failed: ${insErr?.message ?? "unknown"}` };
-  }
-
-  revalidatePath(`/dashboard/courses/${canvasCourseId}`);
-  revalidatePath(`/dashboard/courses/${canvasCourseId}/assignments/${canvasAssignmentId}`);
-  return { ok: true, templateId: inserted.id as string, created: true };
-}
-
-type ChangeResult = { ok: true } | { ok: false; error: string };
-
-/**
- * Swap which personality_preset an existing template clones from. Only
- * affects fallback fields (persona_body, flow_body, etc. that are null on
- * the template); does NOT clobber teacher-edited overrides. Also updates
- * question_set_id to the new preset's default if the template was still
- * pointing at the old preset's default.
- */
-export async function changeAgentForTemplate({
-  canvasCourseId,
-  canvasAssignmentId,
-  presetId,
-}: {
-  canvasCourseId: string;
-  canvasAssignmentId: string;
-  presetId: string;
-}): Promise<ChangeResult> {
-  const canvas = await getCanvasConfigForTeacher();
-  if (!canvas) {
-    return { ok: false, error: "Canvas token not configured." };
-  }
-
-  const admin = createAdminClient();
-
-  const { data: template } = await admin
-    .from("exam_templates")
-    .select("id, personality_preset_id, question_set_id")
-    .eq("teacher_id", canvas.teacherId)
-    .eq("canvas_assignment_id", canvasAssignmentId)
-    .maybeSingle();
-  if (!template) {
-    return { ok: false, error: "No template configured for this assignment yet." };
-  }
-
-  const oldPresetId = template.personality_preset_id as string | null;
-  const { data: oldPreset } = oldPresetId
-    ? await admin
-        .from("personality_presets")
-        .select("default_question_set_id")
-        .eq("id", oldPresetId)
-        .maybeSingle()
-    : { data: null };
-
-  const { data: newPreset } = await admin
-    .from("personality_presets")
-    .select("id, default_question_set_id, teacher_id")
-    .eq("id", presetId)
-    .maybeSingle();
-  if (!newPreset) {
-    return { ok: false, error: "Personality preset not found." };
-  }
-  if (newPreset.teacher_id && newPreset.teacher_id !== canvas.teacherId) {
-    return { ok: false, error: "That agent isn't available to your account." };
-  }
-
-  const stillOnPresetDefault =
-    oldPreset?.default_question_set_id === template.question_set_id;
-  const patch: { personality_preset_id: string; question_set_id?: string | null } = {
-    personality_preset_id: newPreset.id as string,
-  };
-  if (stillOnPresetDefault) {
-    patch.question_set_id = (newPreset.default_question_set_id as string | null) ?? null;
-  }
-
-  const { error: upErr } = await admin
-    .from("exam_templates")
-    .update(patch)
-    .eq("id", template.id);
-  if (upErr) {
-    return { ok: false, error: `Change failed: ${upErr.message}` };
-  }
-
-  revalidatePath(`/dashboard/courses/${canvasCourseId}/assignments/${canvasAssignmentId}`);
-  return { ok: true };
-}
-
+// cloneAgentToTemplate / changeAgentForTemplate removed in M2b.5b dashboard
+// refactor (2026-05-18). Custom templates are now standalone, created via
+// cloneAgentTemplate() in /dashboard/agents/actions.ts; per-assignment
+// agent picks (default agent or custom template) go through
+// setAssignmentAgent() / installCardForAssignment() in the same file.

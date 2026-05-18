@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { hasExamCardMarkerBlock } from "@oral-examiner/canvas";
+import { hasExamCardBlock } from "@oral-examiner/canvas";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { RefreshAssignmentsButton } from "./RefreshAssignmentsButton";
 import { RefreshRosterButton } from "./RefreshRosterButton";
@@ -66,6 +66,16 @@ export default async function CoursePage({
 
   const assignments = (assignmentRows ?? []) as unknown as AssignmentRow[];
 
+  // Which assignments have an agent assigned? Used to gate the install
+  // button — no cards without agents.
+  const { data: bindingsData } = await supabase
+    .from("exam_template_bindings")
+    .select("canvas_assignment_id")
+    .eq("canvas_course_id", canvasCourseId);
+  const boundAssignmentIds = new Set(
+    (bindingsData ?? []).map((b) => b.canvas_assignment_id as string),
+  );
+
   const { data: rosterRow } = await supabase
     .from("course_rosters")
     .select("students, last_synced_at")
@@ -101,7 +111,10 @@ export default async function CoursePage({
             {assignments.map((row) => {
               const a = row.payload;
               const due = a.due_at ? new Date(a.due_at).toLocaleDateString() : "—";
-              const installed = hasExamCardMarkerBlock(a.description ?? "");
+              const installed = hasExamCardBlock(
+                a.description ?? "",
+                row.canvas_assignment_id,
+              );
               return (
                 <li
                   key={row.canvas_assignment_id}
@@ -127,6 +140,7 @@ export default async function CoursePage({
                       canvasCourseId={canvasCourseId}
                       canvasAssignmentId={row.canvas_assignment_id}
                       installed={installed}
+                      agentAssigned={boundAssignmentIds.has(row.canvas_assignment_id)}
                     />
                     <Link
                       href={`/dashboard/courses/${canvasCourseId}/assignments/${row.canvas_assignment_id}`}

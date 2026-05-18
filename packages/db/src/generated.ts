@@ -236,28 +236,85 @@ export type Database = {
           },
         ]
       }
+      exam_template_bindings: {
+        Row: {
+          bound_at: string
+          canvas_assignment_id: string
+          canvas_course_id: string
+          exam_template_id: string | null
+          exam_token: string
+          personality_preset_id: string | null
+          teacher_id: string
+        }
+        Insert: {
+          bound_at?: string
+          canvas_assignment_id: string
+          canvas_course_id: string
+          exam_template_id?: string | null
+          exam_token: string
+          personality_preset_id?: string | null
+          teacher_id: string
+        }
+        Update: {
+          bound_at?: string
+          canvas_assignment_id?: string
+          canvas_course_id?: string
+          exam_template_id?: string | null
+          exam_token?: string
+          personality_preset_id?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_template_bindings_exam_template_id_fkey"
+            columns: ["exam_template_id"]
+            isOneToOne: false
+            referencedRelation: "exam_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_template_bindings_personality_preset_id_fkey"
+            columns: ["personality_preset_id"]
+            isOneToOne: false
+            referencedRelation: "personality_presets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_template_bindings_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_templates: {
         Row: {
           archived_at: string | null
-          canvas_assignment_id: string
-          canvas_course_id: string
+          canvas_assignment_id: string | null
+          canvas_course_id: string | null
           closing_text: string | null
           created_at: string
           duration_max_sec: number
           duration_min_sec: number
-          exam_token: string
+          eval_prompt_body: string | null
+          exam_token: string | null
           flow_body: string | null
+          follow_up_depth: string | null
           id: string
           intake_config: Json
+          live_voice_name: string | null
           locked_at: string | null
           name: string
           opening_text: string | null
           parent_template_id: string | null
           persona_body: string | null
           personality_preset_id: string | null
+          personalization_enabled: boolean | null
           question_bank: Json
           question_set_id: string | null
           reference_texts: Json
+          rubric_body: string | null
           rubric_version: string
           teacher_id: string
           topic_context: string | null
@@ -266,25 +323,30 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
-          canvas_assignment_id: string
-          canvas_course_id: string
+          canvas_assignment_id?: string | null
+          canvas_course_id?: string | null
           closing_text?: string | null
           created_at?: string
           duration_max_sec?: number
           duration_min_sec?: number
-          exam_token: string
+          eval_prompt_body?: string | null
+          exam_token?: string | null
           flow_body?: string | null
+          follow_up_depth?: string | null
           id?: string
           intake_config?: Json
+          live_voice_name?: string | null
           locked_at?: string | null
           name: string
           opening_text?: string | null
           parent_template_id?: string | null
           persona_body?: string | null
           personality_preset_id?: string | null
+          personalization_enabled?: boolean | null
           question_bank?: Json
           question_set_id?: string | null
           reference_texts?: Json
+          rubric_body?: string | null
           rubric_version?: string
           teacher_id: string
           topic_context?: string | null
@@ -293,25 +355,30 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
-          canvas_assignment_id?: string
-          canvas_course_id?: string
+          canvas_assignment_id?: string | null
+          canvas_course_id?: string | null
           closing_text?: string | null
           created_at?: string
           duration_max_sec?: number
           duration_min_sec?: number
-          exam_token?: string
+          eval_prompt_body?: string | null
+          exam_token?: string | null
           flow_body?: string | null
+          follow_up_depth?: string | null
           id?: string
           intake_config?: Json
+          live_voice_name?: string | null
           locked_at?: string | null
           name?: string
           opening_text?: string | null
           parent_template_id?: string | null
           persona_body?: string | null
           personality_preset_id?: string | null
+          personalization_enabled?: boolean | null
           question_bank?: Json
           question_set_id?: string | null
           reference_texts?: Json
+          rubric_body?: string | null
           rubric_version?: string
           teacher_id?: string
           topic_context?: string | null

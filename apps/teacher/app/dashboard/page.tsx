@@ -1,108 +1,455 @@
 import Link from "next/link";
 import { getTeacher } from "@/lib/auth/teacher";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { RefreshCoursesButton } from "./RefreshCoursesButton";
+import { hasExamCardBlock } from "@oral-examiner/canvas";
+import { isActiveTerm } from "@/lib/sync/active-term";
+import { refreshAllCanvas } from "./actions";
+import { CourseAccordion } from "./CourseAccordion";
+import { RefreshButton, SyncIndicator } from "./RefreshButton";
+import type {
+  AgentBindingSummary,
+  AssignmentRowDB,
+  AssignmentWithStatus,
+  CourseGroup,
+  CourseRowDB,
+  DefaultAgentOption,
+  TeacherTemplateOption,
+} from "./dashboard.types";
 
-type CoursePayload = {
-  id: number;
+type ExamTemplateRow = {
+  id: string;
   name: string;
-  course_code?: string;
-  workflow_state: string;
-  term?: { id: number; name: string };
+  personality_preset_id: string | null;
+  persona_body: string | null;
+  flow_body: string | null;
+  opening_text: string | null;
+  closing_text: string | null;
+  live_voice_name: string | null;
+  follow_up_depth: string | null;
+  personalization_enabled: boolean | null;
+  eval_prompt_body: string | null;
+  rubric_body: string | null;
 };
 
-type CourseRow = {
+type PresetNameRow = { id: string; name: string };
+
+type BindingRow = {
+  canvas_assignment_id: string;
+  exam_template_id: string | null;
+  personality_preset_id: string | null;
+  exam_token: string;
+};
+
+type RosterCacheRow = {
   canvas_course_id: string;
-  payload: CoursePayload;
+  students: { canvas_user_id: string }[] | null;
   last_synced_at: string;
 };
 
 export default async function DashboardPage() {
-  const result = await getTeacher();
-  const teacher = result?.teacher;
+  const ctx = await getTeacher();
+  const teacher = ctx?.teacher;
   const hasToken = !!teacher?.canvas_token_encrypted;
 
-  const supabase = await createServerSupabase();
-  const { data: courseRows } = hasToken
-    ? await supabase
-        .from("canvas_course_cache")
-        .select("canvas_course_id, payload, last_synced_at")
-        .order("last_synced_at", { ascending: false })
-    : { data: null };
+  if (!hasToken) {
+    return <ConnectCanvasPrompt name={teacher?.display_name ?? ""} />;
+  }
 
-  const courses = (courseRows ?? []) as unknown as CourseRow[];
+  const supabase = await createServerSupabase();
+
+  const [
+    coursesRes,
+    assignmentsRes,
+    templatesRes,
+    bindingsRes,
+    rostersRes,
+    defaultsRes,
+  ] = await Promise.all([
+    supabase
+      .from("canvas_course_cache")
+      .select("canvas_course_id, payload, last_synced_at"),
+    supabase
+      .from("canvas_assignment_cache")
+      .select("canvas_assignment_id, canvas_course_id, payload, last_synced_at"),
+    supabase
+      .from("exam_templates")
+      .select(
+        "id, name, personality_preset_id, persona_body, flow_body, opening_text, closing_text, live_voice_name, follow_up_depth, personalization_enabled, eval_prompt_body, rubric_body",
+      ),
+    supabase
+      .from("exam_template_bindings")
+      .select(
+        "canvas_assignment_id, exam_template_id, personality_preset_id, exam_token",
+      ),
+    supabase
+      .from("course_rosters")
+      .select("canvas_course_id, students, last_synced_at"),
+    supabase
+      .from("personality_presets")
+      .select("id, name, description")
+      .is("teacher_id", null)
+      .order("name"),
+  ]);
+
+  const courseRows = (coursesRes.data ?? []) as unknown as CourseRowDB[];
+  const assignmentRows = (assignmentsRes.data ?? []) as unknown as AssignmentRowDB[];
+  const templates = (templatesRes.data ?? []) as unknown as ExamTemplateRow[];
+  const bindings = (bindingsRes.data ?? []) as unknown as BindingRow[];
+  const rosters = (rostersRes.data ?? []) as unknown as RosterCacheRow[];
+  const defaultAgents = ((defaultsRes.data ?? []) as { id: string; name: string; description: string | null }[])
+    .map((a): DefaultAgentOption => ({ id: a.id, name: a.name, description: a.description }));
+
+  // Preset names for the per-row binding labels. Pull every preset id
+  // referenced by either a template or a direct preset binding.
+  const presetIds = Array.from(
+    new Set([
+      ...templates
+        .map((t) => t.personality_preset_id)
+        .filter((x): x is string => !!x),
+      ...bindings
+        .map((b) => b.personality_preset_id)
+        .filter((x): x is string => !!x),
+    ]),
+  );
+  const presetNamesRes = presetIds.length > 0
+    ? await supabase
+        .from("personality_presets")
+        .select("id, name")
+        .in("id", presetIds)
+    : { data: [] };
+  const presetNameById = new Map<string, string>(
+    ((presetNamesRes.data ?? []) as unknown as PresetNameRow[]).map(
+      (p) => [p.id, p.name],
+    ),
+  );
+
+  const templateById = new Map(templates.map((t) => [t.id, t]));
+  const bindingByAssignment = new Map<string, AgentBindingSummary>();
+  for (const b of bindings) {
+    if (b.exam_template_id) {
+      const t = templateById.get(b.exam_template_id);
+      if (!t) continue;
+      bindingByAssignment.set(b.canvas_assignment_id, {
+        kind: "template",
+        template_id: t.id,
+        template_name: t.name,
+        preset_name: t.personality_preset_id
+          ? presetNameById.get(t.personality_preset_id) ?? null
+          : null,
+        override_count: countOverrides(t),
+        exam_token: b.exam_token,
+      });
+    } else if (b.personality_preset_id) {
+      // Render the binding even if the preset name lookup failed (RLS
+      // denied, preset got deleted between queries, etc.) — falling
+      // through to "continue" would hide an assignment that DOES have an
+      // agent assigned, surprising the teacher with a phantom "no agent"
+      // state.
+      const name =
+        presetNameById.get(b.personality_preset_id) ?? "unknown default";
+      bindingByAssignment.set(b.canvas_assignment_id, {
+        kind: "preset",
+        preset_id: b.personality_preset_id,
+        preset_name: name,
+        exam_token: b.exam_token,
+      });
+    }
+  }
+
+  // Picker options for the install-with-agent dialog. Teacher templates
+  // appear in addition to default agents so a previously-customized
+  // template is one click away.
+  const teacherTemplates: TeacherTemplateOption[] = templates.map((t) => ({
+    id: t.id,
+    name: t.name,
+    presetName: t.personality_preset_id
+      ? presetNameById.get(t.personality_preset_id) ?? null
+      : null,
+  }));
+
+  const rosterByCourse = new Map<string, { studentCount: number; lastSyncedAt: string | null }>(
+    rosters.map((r) => [
+      r.canvas_course_id,
+      {
+        studentCount: Array.isArray(r.students) ? r.students.length : 0,
+        lastSyncedAt: r.last_synced_at,
+      },
+    ]),
+  );
+
+  const groups: CourseGroup[] = courseRows
+    .map((row) => {
+      const courseAssignments: AssignmentWithStatus[] = assignmentRows
+        .filter((a) => a.canvas_course_id === row.canvas_course_id)
+        .map((a) => {
+          const payload = a.payload;
+          return {
+            ...payload,
+            canvas_assignment_id: a.canvas_assignment_id,
+            canvas_course_id: a.canvas_course_id,
+            cardInstalled: hasExamCardBlock(
+              payload.description ?? "",
+              a.canvas_assignment_id,
+            ),
+            binding:
+              bindingByAssignment.get(a.canvas_assignment_id) ?? null,
+          };
+        })
+        .sort(byDueDateThenName);
+
+      const installedCount = courseAssignments.filter((a) => a.cardInstalled).length;
+      const boundCount = courseAssignments.filter((a) => a.binding).length;
+
+      return {
+        course: {
+          ...row.payload,
+          canvas_course_id: row.canvas_course_id,
+        },
+        assignments: courseAssignments,
+        installedCount,
+        boundCount,
+        roster:
+          rosterByCourse.get(row.canvas_course_id) ?? {
+            studentCount: 0,
+            lastSyncedAt: null,
+          },
+      };
+    })
+    .sort(byActiveStateThenName);
+
+  const activeGroups = groups.filter((g) => isActiveTerm(g.course.term?.name));
+  const otherTerm = groups.filter((g) => !isActiveTerm(g.course.term?.name));
+
+  const visibleActive = activeGroups.filter((g) => g.assignments.length > 0);
+  const emptyActive = activeGroups.filter((g) => g.assignments.length === 0);
+
+  // Show the most-recent cache write as the global "last synced" time —
+  // derived from canvas_course_cache instead of a dedicated teachers
+  // column, so we don't proliferate schema for a UX nicety.
+  const lastSyncedAt = courseRows.reduce<string | null>((latest, r) => {
+    if (!latest) return r.last_synced_at;
+    return r.last_synced_at > latest ? r.last_synced_at : latest;
+  }, null);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="heading text-2xl">Welcome, {teacher?.display_name}.</h1>
-        <p className="muted text-sm mt-1">{teacher?.email}</p>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h1 className="heading text-2xl">Your courses</h1>
+          <p className="muted text-sm mt-1">
+            {teacher?.display_name} · {teacher?.email}
+          </p>
+        </div>
+        <form action={refreshFromDashboard} className="flex items-center gap-2">
+          <SyncIndicator lastSyncedAt={lastSyncedAt} />
+          <RefreshButton />
+          <Link
+            href="/dashboard/canvas"
+            className="muted text-xs underline hover:no-underline"
+          >
+            Canvas settings →
+          </Link>
+        </form>
       </div>
 
-      {!hasToken ? (
-        <section className="surface p-5">
-          <h2 className="heading text-lg mb-2">Connect Canvas</h2>
-          <p className="text-sm mb-3">
-            OE v2 needs a Canvas API token to read your courses + assignments and
-            (eventually) post oral-defense submissions on the student&apos;s behalf.
-          </p>
-          <Link href="/dashboard/canvas" className="btn btn-primary">
-            Connect Canvas →
-          </Link>
-        </section>
+      {courseRows.length === 0 ? (
+        <FirstSyncPrompt />
+      ) : visibleActive.length > 0 ? (
+        <div className="space-y-2">
+          {visibleActive.map((g) => (
+            <CourseAccordion
+              key={g.course.canvas_course_id}
+              group={g}
+              defaultAgents={defaultAgents}
+              teacherTemplates={teacherTemplates}
+            />
+          ))}
+        </div>
       ) : (
-        <>
-          <section className="surface p-5">
-            <div className="flex items-baseline justify-between mb-3">
-              <h2 className="heading text-lg">Courses</h2>
-              <Link href="/dashboard/canvas" className="muted text-xs">
-                Canvas settings →
-              </Link>
-            </div>
+        <div className="rounded border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900">
+          No active-term courses with assignments. If you teach a course this
+          term, click <strong>Refresh from Canvas</strong> above.
+        </div>
+      )}
 
-            {courses.length === 0 ? (
-              <div className="space-y-3">
-                <p className="text-sm muted">
-                  No courses cached yet. Sync from Canvas to populate.
-                </p>
-                <RefreshCoursesButton />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <RefreshCoursesButton />
-                <ul className="divide-y divide-rule border border-rule rounded">
-                  {courses.map((row) => {
-                    const c = row.payload;
-                    return (
-                      <li key={row.canvas_course_id}>
-                        <Link
-                          href={`/dashboard/courses/${row.canvas_course_id}`}
-                          className="flex items-baseline justify-between gap-4 p-3 no-underline text-ink hover:bg-paper"
-                        >
-                          <div>
-                            <div className="font-medium">{c.name}</div>
-                            <div className="muted text-xs mt-0.5">
-                              {c.course_code ?? "—"}
-                              {c.term?.name && ` · ${c.term.name}`}
-                            </div>
-                          </div>
-                          <span className="muted text-xs whitespace-nowrap">
-                            {c.workflow_state}
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <p className="muted text-xs">
-                  {courses.length} course{courses.length === 1 ? "" : "s"} cached.
-                  Active-term filter is on by default.
-                </p>
-              </div>
-            )}
-          </section>
-        </>
+      {(emptyActive.length > 0 || otherTerm.length > 0) && (
+        <OtherCoursesSection
+          emptyActive={emptyActive}
+          otherTerm={otherTerm}
+        />
       )}
     </div>
   );
+}
+
+async function refreshFromDashboard() {
+  "use server";
+  await refreshAllCanvas();
+}
+
+function OtherCoursesSection({
+  emptyActive,
+  otherTerm,
+}: {
+  emptyActive: CourseGroup[];
+  otherTerm: CourseGroup[];
+}) {
+  const total = emptyActive.length + otherTerm.length;
+  const byTerm = new Map<string, CourseGroup[]>();
+  for (const g of otherTerm) {
+    const k = g.course.term?.name ?? "No term";
+    if (!byTerm.has(k)) byTerm.set(k, []);
+    byTerm.get(k)!.push(g);
+  }
+  const terms = Array.from(byTerm.entries()).sort(([a], [b]) => b.localeCompare(a));
+
+  return (
+    <details className="mt-8 rounded border border-rule bg-paper text-sm">
+      <summary className="cursor-pointer list-none px-4 py-2.5 text-ink hover:bg-white">
+        <span className="inline-flex items-center gap-2">
+          <span className="muted">▸</span>
+          Other courses ({total} course{total === 1 ? "" : "s"})
+        </span>
+      </summary>
+      <div className="space-y-4 border-t border-rule px-4 py-3">
+        {emptyActive.length > 0 && (
+          <div>
+            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide muted">
+              Active term · no assignments yet
+            </div>
+            <p className="mb-1.5 text-[11px] muted">
+              Hidden by default since there&apos;s nothing to install on. Add an
+              assignment in Canvas, then click Refresh.
+            </p>
+            <ul className="space-y-0.5">
+              {emptyActive.map((g) => (
+                <li
+                  key={g.course.canvas_course_id}
+                  className="truncate text-xs muted"
+                >
+                  {g.course.name}
+                  {g.course.course_code && (
+                    <span className="ml-1.5 font-mono muted">
+                      ({g.course.course_code})
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {terms.length > 0 && (
+          <div>
+            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide muted">
+              Previous terms
+            </div>
+            <p className="mb-2 text-[11px] muted">
+              Assignments aren&apos;t synced for these — Refresh skips them to
+              save Canvas API budget. Listed here in case you need a quick
+              lookup.
+            </p>
+            <div className="space-y-3">
+              {terms.map(([termName, list]) => (
+                <div key={termName}>
+                  <div className="mb-1 text-[10px] font-medium uppercase tracking-wide muted">
+                    {termName}
+                  </div>
+                  <ul className="space-y-0.5">
+                    {list.map((g) => (
+                      <li
+                        key={g.course.canvas_course_id}
+                        className="truncate text-xs muted"
+                      >
+                        {g.course.name}
+                        {g.course.course_code && (
+                          <span className="ml-1.5 font-mono muted">
+                            ({g.course.course_code})
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function FirstSyncPrompt() {
+  return (
+    <div className="rounded border border-rule bg-white p-6 text-center text-sm">
+      <h2 className="heading text-lg">No courses cached yet</h2>
+      <p className="mt-2 muted">
+        Click <strong>Refresh from Canvas</strong> above to pull your
+        active-term courses and their assignments.
+      </p>
+    </div>
+  );
+}
+
+function ConnectCanvasPrompt({ name }: { name: string }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="heading text-2xl">Welcome{name && `, ${name}`}.</h1>
+      </div>
+      <div className="surface p-5">
+        <h2 className="heading text-lg mb-2">Connect Canvas</h2>
+        <p className="text-sm mb-3">
+          OE v2 needs a Canvas API token to read your courses + assignments and
+          (eventually) post oral-defense submissions on the student&apos;s
+          behalf.
+        </p>
+        <Link href="/dashboard/canvas" className="btn btn-primary">
+          Connect Canvas →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
+
+function countOverrides(t: ExamTemplateRow): number {
+  let n = 0;
+  if (t.persona_body !== null) n++;
+  if (t.flow_body !== null) n++;
+  if (t.opening_text !== null) n++;
+  if (t.closing_text !== null) n++;
+  if (t.live_voice_name !== null) n++;
+  if (t.follow_up_depth !== null) n++;
+  if (t.personalization_enabled !== null) n++;
+  if (t.eval_prompt_body !== null) n++;
+  if (t.rubric_body !== null) n++;
+  return n;
+}
+
+function byActiveStateThenName(a: CourseGroup, b: CourseGroup): number {
+  // Available first, then everything else; within group, alphabetical.
+  const aActive = a.course.workflow_state === "available" ? 0 : 1;
+  const bActive = b.course.workflow_state === "available" ? 0 : 1;
+  if (aActive !== bActive) return aActive - bActive;
+  return a.course.name.localeCompare(b.course.name);
+}
+
+function byDueDateThenName(
+  a: AssignmentWithStatus,
+  b: AssignmentWithStatus,
+): number {
+  // Installed assignments float to the top — those are the ones the teacher
+  // is actively managing. Within each group: soonest due first; no due date
+  // sorts to the bottom of its group.
+  const aInstalled = a.cardInstalled ? 0 : 1;
+  const bInstalled = b.cardInstalled ? 0 : 1;
+  if (aInstalled !== bInstalled) return aInstalled - bInstalled;
+  const aDue = a.due_at ? Date.parse(a.due_at) : Number.POSITIVE_INFINITY;
+  const bDue = b.due_at ? Date.parse(b.due_at) : Number.POSITIVE_INFINITY;
+  if (aDue !== bDue) return aDue - bDue;
+  return a.name.localeCompare(b.name);
 }

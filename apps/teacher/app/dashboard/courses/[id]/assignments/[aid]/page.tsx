@@ -1,10 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { hasExamCardMarkerBlock } from "@oral-examiner/canvas";
+import { hasExamCardBlock } from "@oral-examiner/canvas";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { getTeacher } from "@/lib/auth/teacher";
 import { InstallCardButton } from "../../InstallCardButton";
-import { ClonePresetButton } from "./ClonePresetButton";
-import { ChangeAgentButton } from "./ChangeAgentButton";
+import { CardPreview } from "./CardPreview";
+import {
+  TemplatePicker,
+  type AgentOption,
+  type CurrentBinding,
+} from "./TemplatePicker";
+
+function readAppBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? ""
+  );
+}
 
 type AssignmentPayload = {
   id: number;
@@ -18,16 +29,27 @@ type PresetRow = {
   id: string;
   name: string;
   description: string | null;
-  default_question_set_id: string | null;
 };
 
 type TemplateRow = {
   id: string;
   name: string;
-  exam_token: string;
   personality_preset_id: string | null;
-  question_set_id: string | null;
   persona_body: string | null;
+  flow_body: string | null;
+  opening_text: string | null;
+  closing_text: string | null;
+  live_voice_name: string | null;
+  follow_up_depth: string | null;
+  personalization_enabled: boolean | null;
+  eval_prompt_body: string | null;
+  rubric_body: string | null;
+};
+
+type BindingRow = {
+  exam_template_id: string | null;
+  personality_preset_id: string | null;
+  exam_token: string;
 };
 
 export default async function AssignmentConfigurePage({
@@ -35,6 +57,7 @@ export default async function AssignmentConfigurePage({
 }: {
   params: Promise<{ id: string; aid: string }>;
 }) {
+  await getTeacher();
   const { id: canvasCourseId, aid: canvasAssignmentId } = await params;
   const supabase = await createServerSupabase();
 
@@ -46,141 +69,145 @@ export default async function AssignmentConfigurePage({
   if (!assignmentRow) notFound();
   const assignment = assignmentRow.payload as unknown as AssignmentPayload;
 
-  const installed = hasExamCardMarkerBlock(assignment.description ?? "");
+  const installed = hasExamCardBlock(
+    assignment.description ?? "",
+    canvasAssignmentId,
+  );
 
-  const { data: presetRows } = await supabase
-    .from("personality_presets")
-    .select("id, name, description, default_question_set_id")
-    .is("teacher_id", null)
-    .order("name");
-  const presets = (presetRows ?? []) as unknown as PresetRow[];
+  const [presetsRes, templatesRes, bindingRes] = await Promise.all([
+    supabase
+      .from("personality_presets")
+      .select("id, name, description")
+      .is("teacher_id", null)
+      .order("name"),
+    supabase
+      .from("exam_templates")
+      .select(
+        "id, name, personality_preset_id, persona_body, flow_body, opening_text, closing_text, live_voice_name, follow_up_depth, personalization_enabled, eval_prompt_body, rubric_body",
+      )
+      .order("name"),
+    supabase
+      .from("exam_template_bindings")
+      .select("exam_template_id, personality_preset_id, exam_token")
+      .eq("canvas_assignment_id", canvasAssignmentId)
+      .maybeSingle(),
+  ]);
+  const presets = (presetsRes.data ?? []) as PresetRow[];
+  const templates = (templatesRes.data ?? []) as TemplateRow[];
+  const binding = bindingRes.data as unknown as BindingRow | null;
 
-  const { data: templateRow } = await supabase
-    .from("exam_templates")
-    .select("id, name, exam_token, personality_preset_id, question_set_id, persona_body")
-    .eq("canvas_assignment_id", canvasAssignmentId)
-    .maybeSingle();
-  const template = (templateRow as unknown as TemplateRow | null) ?? null;
-  const activePresetId = template?.personality_preset_id ?? null;
-  const activePreset = presets.find((p) => p.id === activePresetId) ?? null;
+  const presetNameById = new Map(presets.map((p) => [p.id, p.name]));
+
+  const options: AgentOption[] = [
+    ...presets.map(
+      (p): AgentOption => ({
+        kind: "preset",
+        id: p.id,
+        name: p.name,
+        description: p.description,
+      }),
+    ),
+    ...templates.map(
+      (t): AgentOption => ({
+        kind: "template",
+        id: t.id,
+        name: t.name,
+        presetName: t.personality_preset_id
+          ? presetNameById.get(t.personality_preset_id) ?? null
+          : null,
+        overrideCount: countOverrides(t),
+      }),
+    ),
+  ];
+
+  let current: CurrentBinding = null;
+  if (binding?.exam_template_id) {
+    const t = templates.find((x) => x.id === binding.exam_template_id);
+    if (t) {
+      current = {
+        kind: "template",
+        templateId: t.id,
+        templateName: t.name,
+        presetName: t.personality_preset_id
+          ? presetNameById.get(t.personality_preset_id) ?? null
+          : null,
+        overrideCount: countOverrides(t),
+      };
+    }
+  } else if (binding?.personality_preset_id) {
+    const name = presetNameById.get(binding.personality_preset_id);
+    if (name) {
+      current = {
+        kind: "preset",
+        presetId: binding.personality_preset_id,
+        presetName: name,
+      };
+    }
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href={`/dashboard/courses/${canvasCourseId}`}
-          className="muted text-sm"
-        >
-          ← Course
+        <Link href="/dashboard" className="muted text-sm">
+          ← Dashboard
         </Link>
         <h1 className="heading text-2xl mt-2">{assignment.name}</h1>
-        <p className="muted text-sm mt-1">
-          Canvas assignment {canvasAssignmentId}
-        </p>
+        <p className="muted text-sm mt-1">Canvas assignment {canvasAssignmentId}</p>
       </div>
 
       <section className="surface p-5">
         <div className="flex items-baseline justify-between mb-3">
+          <h2 className="heading text-lg">Agent template</h2>
+          {binding && (
+            <span className="text-xs muted">
+              Student URL: <code>/exam/{binding.exam_token.slice(0, 8)}…</code>
+            </span>
+          )}
+        </div>
+
+        <TemplatePicker
+          canvasCourseId={canvasCourseId}
+          canvasAssignmentId={canvasAssignmentId}
+          options={options}
+          current={current}
+          defaultNames={presets.map((p) => p.name)}
+        />
+      </section>
+
+      <section className="surface p-5 space-y-3">
+        <div className="flex items-baseline justify-between">
           <h2 className="heading text-lg">Canvas card</h2>
           <InstallCardButton
             canvasCourseId={canvasCourseId}
             canvasAssignmentId={canvasAssignmentId}
             installed={installed}
+            agentAssigned={current !== null}
           />
         </div>
         <p className="text-sm muted">
           {installed
             ? "The branded EHS oral-exam card is in this assignment's description. Students click it to land on the exam."
-            : "Install paints a branded card into the Canvas assignment description; re-install is idempotent."}
+            : "Installs a branded card into the Canvas assignment description; re-install is idempotent. Card and agent are paired — uninstalling removes both."}
         </p>
-      </section>
-
-      <section className="surface p-5">
-        <div className="flex items-baseline justify-between mb-3">
-          <h2 className="heading text-lg">Examiner agent</h2>
-          {template && (
-            <span className="text-xs muted">
-              Template {template.exam_token.slice(0, 8)}…
-            </span>
-          )}
-        </div>
-
-        {template && activePreset ? (
-          <div className="space-y-3">
-            <p className="text-sm">
-              Configured as <strong>{activePreset.name}</strong>.
-              {template.persona_body
-                ? " Persona has teacher overrides."
-                : " Persona falls back to the system default."}
-            </p>
-            <p className="muted text-xs">
-              Per-template prose editing ships in M2b.5b. For now, this
-              assignment runs with the system agent&rsquo;s persona, flow,
-              voice, opening, closing, and question set.
-            </p>
-            <div className="border-t border-rule pt-3">
-              <p className="text-sm font-medium mb-2">Switch to a different agent</p>
-              <div className="grid gap-2">
-                {presets
-                  .filter((p) => p.id !== activePresetId)
-                  .map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-baseline justify-between gap-4 p-2 rounded border border-rule"
-                    >
-                      <div>
-                        <div className="font-medium text-sm">{p.name}</div>
-                        {p.description && (
-                          <div className="muted text-xs mt-0.5">{p.description}</div>
-                        )}
-                      </div>
-                      <ChangeAgentButton
-                        canvasCourseId={canvasCourseId}
-                        canvasAssignmentId={canvasAssignmentId}
-                        presetId={p.id}
-                        presetName={p.name}
-                      />
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm">
-              Pick a system agent to run this oral exam. You can switch
-              agents later, and (once M2b.5b ships) override the persona,
-              flow, opening, closing, and question set per-template.
-            </p>
-            <div className="grid gap-3">
-              {presets.length === 0 ? (
-                <p className="muted text-xs">
-                  No personality presets are seeded. Run the migrations.
-                </p>
-              ) : (
-                presets.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-baseline justify-between gap-4 p-3 rounded border border-rule"
-                  >
-                    <div>
-                      <div className="font-medium">{p.name}</div>
-                      {p.description && (
-                        <div className="muted text-xs mt-0.5">{p.description}</div>
-                      )}
-                    </div>
-                    <ClonePresetButton
-                      canvasCourseId={canvasCourseId}
-                      canvasAssignmentId={canvasAssignmentId}
-                      presetId={p.id}
-                    />
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
+        <CardPreview
+          appBaseUrl={readAppBaseUrl()}
+          canvasAssignmentId={canvasAssignmentId}
+        />
       </section>
     </div>
   );
+}
+
+function countOverrides(t: TemplateRow): number {
+  let n = 0;
+  if (t.persona_body !== null) n++;
+  if (t.flow_body !== null) n++;
+  if (t.opening_text !== null) n++;
+  if (t.closing_text !== null) n++;
+  if (t.live_voice_name !== null) n++;
+  if (t.follow_up_depth !== null) n++;
+  if (t.personalization_enabled !== null) n++;
+  if (t.eval_prompt_body !== null) n++;
+  if (t.rubric_body !== null) n++;
+  return n;
 }

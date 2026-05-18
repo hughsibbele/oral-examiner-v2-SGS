@@ -8,6 +8,7 @@ export {
   buildExamCardBlock,
   findExamCardBlock,
   findExamCardMarkerBlock,
+  hasExamCardBlock,
   hasExamCardMarkerBlock,
   removeExamCardBlock,
   replaceOrAppendExamCardBlock,
