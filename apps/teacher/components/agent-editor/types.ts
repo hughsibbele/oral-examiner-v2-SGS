@@ -54,6 +54,9 @@ export type PersonaRow = {
 
 export type QSetRow = {
   id: string;
+  /** Null = system-seeded (the 4 defaults); UUID = teacher-owned (cloned
+   *  via M2b.5b.5 "Make my own copy"). Drives the inline edit lock. */
+  teacher_id: string | null;
   name: string;
   description: string | null;
   updated_at: string;

@@ -29,6 +29,8 @@ export type {
 export { QuestionSetBlock } from "./QuestionSetBlock";
 export type { QuestionSetActions } from "./QuestionSetBlock";
 
+export { QuestionSetPicker } from "./QuestionSetPicker";
+
 export { IntakeBlock } from "./IntakeBlock";
 export type { IntakeActions } from "./IntakeBlock";
 

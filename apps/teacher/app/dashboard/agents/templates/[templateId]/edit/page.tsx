@@ -53,6 +53,8 @@ type QSetRow = {
   updated_at: string;
 };
 
+type AvailableSetRow = QSetRow;
+
 type BucketRow = {
   id: string;
   question_set_id: string;
@@ -124,6 +126,29 @@ export default async function TemplateEditPage({
         .maybeSingle()
     : { data: null };
   const qset = (qsetData as unknown as QSetRow | null) ?? null;
+
+  // Available sets for the M2b.5b.5 picker: every system set + every set
+  // this teacher owns. RLS already scopes the read, but we ask for both
+  // shapes explicitly so the optgroups in the picker render correctly.
+  const { data: availableSetsData } = await supabase
+    .from("question_sets")
+    .select("id, teacher_id, name, description, updated_at")
+    .or(`teacher_id.is.null,teacher_id.eq.${template.teacher_id}`)
+    .order("name");
+  const availableSets =
+    (availableSetsData as unknown as AvailableSetRow[] | null) ?? [];
+
+  // How many templates reference the current set? Drives the "shared across
+  // X templates" warning in the picker + (later) the inline editor.
+  let sharedAcrossTemplates = 0;
+  if (qset) {
+    const { count } = await supabase
+      .from("exam_templates")
+      .select("id", { count: "exact", head: true })
+      .eq("question_set_id", qset.id)
+      .eq("teacher_id", template.teacher_id);
+    sharedAcrossTemplates = count ?? 0;
+  }
 
   let buckets: BucketRow[] = [];
   let questions: QuestionRow[] = [];
@@ -218,6 +243,8 @@ export default async function TemplateEditPage({
     qset,
     buckets,
     questionsByBucket,
+    availableSets,
+    sharedAcrossTemplates,
     bindings: bindings.map((b) => ({
       canvas_course_id: b.canvas_course_id,
       canvas_assignment_id: b.canvas_assignment_id,

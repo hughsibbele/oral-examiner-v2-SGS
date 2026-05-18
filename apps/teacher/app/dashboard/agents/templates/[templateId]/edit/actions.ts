@@ -559,3 +559,179 @@ export async function resetTemplateIntakeConfig(
 export async function getTemplateIntakeTotalCapBytes(): Promise<number> {
   return MAX_TOTAL_INTAKE_BYTES;
 }
+
+// =========================================================================
+// Question set — picker + clone-to-mine (M2b.5b.5)
+// =========================================================================
+
+/**
+ * Re-link the template to a different question_set. The set must be either
+ * system-seeded (teacher_id IS NULL) or owned by this teacher — RLS already
+ * scopes question_sets reads to those two cases, so an unauthorized id
+ * would surface as "not found" anyway, but we check explicitly so the
+ * error message is useful.
+ */
+export async function setTemplateQuestionSet(
+  formData: FormData,
+): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "");
+  const setId = String(formData.get("question_set_id") ?? "");
+  if (!setId) return { ok: false, error: "Missing question set id." };
+
+  const ctx = await loadTemplateContext(id);
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+  const { template } = ctx;
+
+  const supabase = await createServerSupabase();
+  const { data: set, error: readErr } = await supabase
+    .from("question_sets")
+    .select("id, teacher_id")
+    .eq("id", setId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: readErr.message };
+  if (!set) return { ok: false, error: "Question set not found." };
+  if (set.teacher_id !== null && set.teacher_id !== template.teacher_id) {
+    return { ok: false, error: "That question set isn't available to you." };
+  }
+
+  const { error } = await supabase
+    .from("exam_templates")
+    .update({ question_set_id: setId })
+    .eq("id", template.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateEditPage(template);
+  return { ok: true };
+}
+
+/**
+ * Clone the template's currently-linked question set into a new
+ * teacher-owned set + cascade question_buckets + questions. Re-links the
+ * template to the new set. Used by the "Make my own copy of [current set]"
+ * affordance — the only path that turns a system set into a teacher-owned
+ * editable set within this template's editor.
+ *
+ * Per the M2b.5b plan: question-set sharing model is "save-as-mine to
+ * reuse" (Option A). Teachers consciously opt into reuse — every clone
+ * lands as a fresh set, and only further explicit re-linking shares it
+ * across templates.
+ */
+export async function cloneQuestionSetForTeacher(
+  formData: FormData,
+): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "");
+  const newName = String(formData.get("name") ?? "").trim();
+  if (!newName) return { ok: false, error: "Give your copy a name." };
+
+  const ctx = await loadTemplateContext(id);
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+  const { template } = ctx;
+
+  const supabase = await createServerSupabase();
+
+  // Source set lookup — derived from the current question_set_id; reject
+  // if the template isn't currently pointed at any set.
+  const { data: tplWithSet } = await supabase
+    .from("exam_templates")
+    .select("question_set_id")
+    .eq("id", template.id)
+    .maybeSingle();
+  const sourceSetId = (tplWithSet?.question_set_id as string | null) ?? null;
+  if (!sourceSetId) {
+    return {
+      ok: false,
+      error:
+        "Pick a question set first — there's nothing to copy. The agent's default set will appear once a personality preset is linked.",
+    };
+  }
+
+  const { data: sourceSet, error: srcErr } = await supabase
+    .from("question_sets")
+    .select("id, teacher_id, description")
+    .eq("id", sourceSetId)
+    .maybeSingle();
+  if (srcErr) return { ok: false, error: srcErr.message };
+  if (!sourceSet) return { ok: false, error: "Source set not found." };
+
+  // Insert the new teacher-owned set. RLS write policies on question_sets
+  // accept teacher-scoped rows; chasing buckets/questions through the
+  // teacher-owned set's RLS chain works the same way.
+  const { data: newSet, error: newSetErr } = await supabase
+    .from("question_sets")
+    .insert({
+      teacher_id: template.teacher_id,
+      name: newName,
+      description: sourceSet.description as string | null,
+    })
+    .select("id")
+    .single();
+  if (newSetErr || !newSet) {
+    return { ok: false, error: newSetErr?.message ?? "Set clone failed." };
+  }
+
+  // Pull source buckets in order, clone each into the new set, then clone
+  // the questions under each bucket. Done sequentially to preserve the
+  // (parent, position) unique constraints — concurrent inserts would race.
+  const { data: srcBuckets, error: bktErr } = await supabase
+    .from("question_buckets")
+    .select("id, name, position, select_count")
+    .eq("question_set_id", sourceSetId)
+    .order("position");
+  if (bktErr) return { ok: false, error: bktErr.message };
+
+  for (const b of (srcBuckets ?? []) as Array<{
+    id: string;
+    name: string;
+    position: number;
+    select_count: number;
+  }>) {
+    const { data: newBucket, error: bktInsErr } = await supabase
+      .from("question_buckets")
+      .insert({
+        question_set_id: newSet.id as string,
+        name: b.name,
+        position: b.position,
+        select_count: b.select_count,
+      })
+      .select("id")
+      .single();
+    if (bktInsErr || !newBucket) {
+      return { ok: false, error: bktInsErr?.message ?? "Bucket clone failed." };
+    }
+
+    const { data: srcQs, error: qErr } = await supabase
+      .from("questions")
+      .select("position, text, reference_snippet")
+      .eq("question_bucket_id", b.id)
+      .order("position");
+    if (qErr) return { ok: false, error: qErr.message };
+
+    if ((srcQs ?? []).length > 0) {
+      const qRows = (srcQs as Array<{
+        position: number;
+        text: string;
+        reference_snippet: string | null;
+      }>).map((q) => ({
+        question_bucket_id: newBucket.id as string,
+        position: q.position,
+        text: q.text,
+        reference_snippet: q.reference_snippet,
+      }));
+      const { error: qInsErr } = await supabase
+        .from("questions")
+        .insert(qRows);
+      if (qInsErr) return { ok: false, error: qInsErr.message };
+    }
+  }
+
+  // Re-link the template to the freshly-cloned set.
+  const { error: linkErr } = await supabase
+    .from("exam_templates")
+    .update({ question_set_id: newSet.id as string })
+    .eq("id", template.id);
+  if (linkErr) return { ok: false, error: linkErr.message };
+
+  revalidateEditPage(template);
+  revalidatePath("/dashboard/agents");
+  return { ok: true };
+}

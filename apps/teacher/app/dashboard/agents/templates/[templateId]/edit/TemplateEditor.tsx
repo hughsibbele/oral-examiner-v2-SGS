@@ -14,6 +14,7 @@ import {
   IntakeBlock,
   PersonaBlock,
   QuestionSetBlock,
+  QuestionSetPicker,
   SaveRow,
   useDirtyBody,
   type ActionResult,
@@ -28,9 +29,11 @@ import {
   addTemplateIntakeAttachmentFromDrive,
   addTemplateIntakeAttachmentFromPaste,
   addTemplateIntakeAttachmentFromUpload,
+  cloneQuestionSetForTeacher,
   removeTemplateIntakeAttachment,
   resetTemplateField,
   resetTemplateIntakeConfig,
+  setTemplateQuestionSet,
   updateTemplateEvaluation,
   updateTemplateFlow,
   updateTemplateIntakeToggles,
@@ -93,6 +96,12 @@ export type TemplateEditorData = {
   qset: QSetRow | null;
   buckets: BucketRow[];
   questionsByBucket: Record<string, QuestionRow[]>;
+  /** All sets this teacher can pick from in the M2b.5b.5 picker — system
+   *  + teacher-owned (RLS-scoped). */
+  availableSets: QSetRow[];
+  /** Number of this teacher's templates that link the current set; used by
+   *  the picker's "shared across N templates" warning. */
+  sharedAcrossTemplates: number;
   bindings: {
     canvas_course_id: string;
     canvas_assignment_id: string;
@@ -115,7 +124,16 @@ export function TemplateEditor({
   data: TemplateEditorData;
   intakeCapBytes: number;
 }) {
-  const { template, preset, qset, buckets, questionsByBucket, bindings } = data;
+  const {
+    template,
+    preset,
+    qset,
+    buckets,
+    questionsByBucket,
+    availableSets,
+    sharedAcrossTemplates,
+    bindings,
+  } = data;
   const ns = template.id;
   const bodyRef = useRef<HTMLDivElement | null>(null);
   useDirtyBody(bodyRef, template.updated_at);
@@ -394,7 +412,19 @@ export function TemplateEditor({
         tagStatus={tagStatus}
       />
 
-      {/* Question set — read-only until M2b.5b.5/5b.6 */}
+      {/* Question set — picker (5b.5) + read-only block (inline editing
+          lands in 5b.6 for teacher-owned sets) */}
+      <QuestionSetPicker
+        ns={ns}
+        templateId={template.id}
+        currentSet={qset}
+        availableSets={availableSets}
+        sharedAcrossTemplates={sharedAcrossTemplates}
+        setQuestionSet={setTemplateQuestionSet}
+        cloneQuestionSet={cloneQuestionSetForTeacher}
+        run={run}
+        tagStatus={tagStatus}
+      />
       {qset ? (
         <>
           <QuestionSetBlock
@@ -407,21 +437,29 @@ export function TemplateEditor({
             run={run}
             tagStatus={tagStatus}
           />
-          <p className="muted text-xs px-1">
-            Question set is system-seeded — per-template question editing
-            ships in M2b.5b.5 / M2b.5b.6 (picker + clone-to-mine + inline
-            editor). For now, admins edit the defaults at{" "}
-            <Link href="/admin/agents" className="text-maroon no-underline hover:underline">
-              /admin/agents
-            </Link>
-            .
-          </p>
+          {qset.teacher_id == null && (
+            <p className="muted text-xs px-1">
+              System-seeded set — read-only here. Click &ldquo;Make my own
+              copy&rdquo; above to clone it into an editable set. Admins
+              can also edit the canonical defaults at{" "}
+              <Link href="/admin/agents" className="text-maroon no-underline hover:underline">
+                /admin/agents
+              </Link>
+              .
+            </p>
+          )}
+          {qset.teacher_id != null && (
+            <p className="muted text-xs px-1">
+              Your custom set. Inline bucket + question editing lands in
+              M2b.5b.6.
+            </p>
+          )}
         </>
       ) : (
         <div className="surface p-5">
           <p className="text-sm muted">
-            No question set linked yet. Pick a system agent (or wait for
-            M2b.5b.5) to attach a question bank.
+            No question set linked yet. Pick one from the picker above (or
+            start a different agent that ships with a default set).
           </p>
         </div>
       )}
