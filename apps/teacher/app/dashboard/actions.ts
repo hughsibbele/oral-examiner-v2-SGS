@@ -15,7 +15,10 @@ import {
 import type { Json } from "@oral-examiner/db";
 import { anonToken, readSaltFromEnv } from "@oral-examiner/anonymizer";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCanvasConfigForTeacher } from "@/lib/canvas/server";
+import {
+  ensureTeacherOwnsAssignment,
+  getCanvasConfigForTeacher,
+} from "@/lib/canvas/server";
 import { resolveCardTextForTeacher } from "@/lib/card-text/resolve";
 import { isActiveTerm } from "@/lib/sync/active-term";
 
@@ -330,6 +333,15 @@ export async function installOralExamCard({
     return { ok: false, error: "Canvas token not configured." };
   }
 
+  // M2b.5b.11.a: defense-in-depth ownership check before any writes.
+  // Catches stale ids from old UIs / direct callers that don't match
+  // any synced assignment for this teacher.
+  const owns = await ensureTeacherOwnsAssignment(
+    canvas.teacherId,
+    canvasAssignmentId,
+  );
+  if (!owns.ok) return { ok: false, error: owns.error };
+
   // Invariant guard: every Canvas card has to have an agent assigned. This
   // entry point is reached from the dashboard accordion (re-install path)
   // and the assignment configure page's InstallCardButton (UI-gated to
@@ -413,6 +425,12 @@ export async function uninstallOralExamCard({
   if (!canvas) {
     return { ok: false, error: "Canvas token not configured." };
   }
+
+  const owns = await ensureTeacherOwnsAssignment(
+    canvas.teacherId,
+    canvasAssignmentId,
+  );
+  if (!owns.ok) return { ok: false, error: owns.error };
 
   try {
     const current = await getAssignment(canvas.config, canvasCourseId, canvasAssignmentId);

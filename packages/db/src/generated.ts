@@ -321,14 +321,11 @@ export type Database = {
       exam_templates: {
         Row: {
           archived_at: string | null
-          canvas_assignment_id: string | null
-          canvas_course_id: string | null
           closing_text: string | null
           created_at: string
           duration_max_sec: number
           duration_min_sec: number
           eval_prompt_body: string | null
-          exam_token: string | null
           flow_body: string | null
           follow_up_depth: string | null
           id: string
@@ -353,14 +350,11 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
-          canvas_assignment_id?: string | null
-          canvas_course_id?: string | null
           closing_text?: string | null
           created_at?: string
           duration_max_sec?: number
           duration_min_sec?: number
           eval_prompt_body?: string | null
-          exam_token?: string | null
           flow_body?: string | null
           follow_up_depth?: string | null
           id?: string
@@ -385,14 +379,11 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
-          canvas_assignment_id?: string | null
-          canvas_course_id?: string | null
           closing_text?: string | null
           created_at?: string
           duration_max_sec?: number
           duration_min_sec?: number
           eval_prompt_body?: string | null
-          exam_token?: string | null
           flow_body?: string | null
           follow_up_depth?: string | null
           id?: string

@@ -150,14 +150,41 @@ export function FlowBlock(props: {
           label="Personalization"
           hint="Uses student name + assignment context in greetings/transitions."
         >
-          <label className="flex items-center gap-2 text-sm pt-1 cursor-pointer">
-            <input
-              type="checkbox"
+          {mode === "system" ? (
+            <label className="flex items-center gap-2 text-sm pt-1 cursor-pointer">
+              <input
+                type="checkbox"
+                name="personalization_enabled"
+                defaultChecked={values.personalization_enabled}
+              />
+              <span>Enabled</span>
+            </label>
+          ) : (
+            // M2b.5b.11.b: tri-state in template mode so a teacher can pin
+            // either explicit value or fall back to the preset without
+            // clicking the reset-to-default button.
+            <select
               name="personalization_enabled"
-              defaultChecked={values.personalization_enabled}
-            />
-            <span>Enabled</span>
-          </label>
+              defaultValue={
+                overrideMask?.personalization_enabled
+                  ? values.personalization_enabled
+                    ? "on"
+                    : "off"
+                  : "inherit"
+              }
+              className="w-full border border-rule rounded px-3 py-2 text-sm"
+            >
+              <option value="inherit">
+                Inherit from preset (
+                {presetFallback?.personalization_enabled
+                  ? "enabled"
+                  : "disabled"}
+                )
+              </option>
+              <option value="on">Enabled</option>
+              <option value="off">Disabled</option>
+            </select>
+          )}
           {mode === "template" && (
             <InheritIndicator
               field="personalization_enabled"

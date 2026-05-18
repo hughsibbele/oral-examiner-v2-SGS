@@ -210,7 +210,22 @@ export async function updateTemplateFlow(
   ) {
     return { ok: false, error: "Follow-up depth must be light, medium, or deep." };
   }
-  const personalization_enabled = formData.get("personalization_enabled") === "on";
+  // M2b.5b.11.b: personalization is now a tri-state select in template
+  // mode — "inherit" / "on" / "off" — so a teacher can pin either value
+  // OR explicitly fall back to the preset without clicking the per-field
+  // reset button.
+  const personalization_raw = String(
+    formData.get("personalization_enabled") ?? "",
+  );
+  let personalization_patch: boolean | null;
+  if (personalization_raw === "on") {
+    personalization_patch = diffOrNull(true, preset?.personalization_enabled);
+  } else if (personalization_raw === "off") {
+    personalization_patch = diffOrNull(false, preset?.personalization_enabled);
+  } else {
+    // "inherit" or anything else → null
+    personalization_patch = null;
+  }
 
   const supabase = await createServerSupabase();
   const { error } = await supabase
@@ -221,10 +236,7 @@ export async function updateTemplateFlow(
         follow_up_depth_raw,
         preset?.follow_up_depth,
       ),
-      personalization_enabled: diffOrNull(
-        personalization_enabled,
-        preset?.personalization_enabled,
-      ),
+      personalization_enabled: personalization_patch,
     })
     .eq("id", template.id);
   if (error) return { ok: false, error: error.message };

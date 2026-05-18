@@ -4,7 +4,10 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getTeacher } from "@/lib/auth/teacher";
-import { getCanvasConfigForTeacher } from "@/lib/canvas/server";
+import {
+  ensureTeacherOwnsAssignment,
+  getCanvasConfigForTeacher,
+} from "@/lib/canvas/server";
 import { resolveCardTextForTeacher } from "@/lib/card-text/resolve";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -275,6 +278,14 @@ export async function setAssignmentAgent(args: {
 }): Promise<ActionResult> {
   const auth = await getTeacher();
   if (!auth) return { ok: false, error: "Not signed in." };
+
+  // M2b.5b.11.a: defense-in-depth ownership check.
+  const owns = await ensureTeacherOwnsAssignment(
+    auth.teacher.id,
+    args.canvasAssignmentId,
+  );
+  if (!owns.ok) return { ok: false, error: owns.error };
+
   const admin = createAdminClient();
 
   if (!args.agent) {
@@ -425,6 +436,13 @@ export async function installCardForAssignment(args: {
 > {
   const auth = await getTeacher();
   if (!auth) return { ok: false, error: "Not signed in." };
+
+  // M2b.5b.11.a: defense-in-depth ownership check before any writes.
+  const owns = await ensureTeacherOwnsAssignment(
+    auth.teacher.id,
+    args.canvasAssignmentId,
+  );
+  if (!owns.ok) return { ok: false, error: owns.error };
 
   const canvas = await getCanvasConfigForTeacher();
   if (!canvas) return { ok: false, error: "Canvas token not configured." };
