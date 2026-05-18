@@ -87,6 +87,12 @@ export function CustomTemplateRow({
         </button>
         <div className="flex items-baseline gap-3 shrink-0">
           <Link
+            href={`/dashboard/agents/templates/${template.id}/try`}
+            className="text-maroon text-sm no-underline hover:underline"
+          >
+            Try it out →
+          </Link>
+          <Link
             href={`/dashboard/agents/templates/${template.id}/edit`}
             className="text-maroon text-sm no-underline hover:underline"
           >

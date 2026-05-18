@@ -23,6 +23,7 @@ export default async function DashboardLayout({
           <>
             <Link href="/dashboard">Dashboard</Link>
             <Link href="/dashboard/agents">Agent Templates</Link>
+            <Link href="/dashboard/canvas">Canvas &amp; Drive setup</Link>
             {showAdminLink && <Link href="/admin">Admin</Link>}
             <form action="/auth/signout" method="post" className="inline">
               <button type="submit" className="btn">

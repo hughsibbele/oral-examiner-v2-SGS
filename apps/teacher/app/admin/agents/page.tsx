@@ -20,6 +20,12 @@ type CardDefaultsRow = {
   updated_at: string;
 };
 
+function readAppBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? ""
+  );
+}
+
 const SYSTEM_PROMPT_META: Record<string, { title: string; subtitle: string }> = {
   student_summary: {
     title: "Student summary prompt",
@@ -291,6 +297,7 @@ export default async function AdminAgentsPage() {
               footnote: cardDefaults.footnote,
             }}
             updatedAt={cardDefaults.updated_at}
+            appBaseUrl={readAppBaseUrl()}
           />
         )}
       </div>

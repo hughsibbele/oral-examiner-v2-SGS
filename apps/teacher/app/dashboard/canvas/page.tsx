@@ -30,12 +30,13 @@ export default async function CanvasSetupPage() {
         <Link href="/dashboard" className="muted text-sm">
           ← Dashboard
         </Link>
-        <h1 className="heading text-2xl mt-2">Canvas connection</h1>
+        <h1 className="heading text-2xl mt-2">Canvas &amp; Drive setup</h1>
         <p className="muted text-sm mt-1">
-          OE v2 uses your Canvas API token to read courses and assignments, install
-          the branded reflection card, and (in Phase 3) post oral-defense
-          submissions on the student&apos;s behalf via{" "}
-          <code>as_user_id</code> masquerade.
+          OE v2 uses your Canvas API token to read courses and assignments,
+          install the branded card on each assignment, and (in Phase 3) post
+          oral-defense submissions on the student&apos;s behalf via{" "}
+          <code>as_user_id</code> masquerade. Drive setup arrives with M7
+          (cross-suite Drive-as-spine).
         </p>
       </div>
 
