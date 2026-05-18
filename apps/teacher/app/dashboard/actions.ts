@@ -16,6 +16,7 @@ import type { Json } from "@oral-examiner/db";
 import { anonToken, readSaltFromEnv } from "@oral-examiner/anonymizer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCanvasConfigForTeacher } from "@/lib/canvas/server";
+import { resolveCardTextForTeacher } from "@/lib/card-text/resolve";
 import { isActiveTerm } from "@/lib/sync/active-term";
 
 function readAppBaseUrl(): string {
@@ -358,7 +359,12 @@ export async function installOralExamCard({
 
   try {
     const current = await getAssignment(canvas.config, canvasCourseId, canvasAssignmentId);
-    const cardHtml = buildExamCardBlock({ appBaseUrl, canvasAssignmentId });
+    const text = await resolveCardTextForTeacher(canvas.teacherId);
+    const cardHtml = buildExamCardBlock({
+      appBaseUrl,
+      canvasAssignmentId,
+      text,
+    });
     const nextDescription = replaceOrAppendExamCardBlock(
       current.description ?? "",
       cardHtml,

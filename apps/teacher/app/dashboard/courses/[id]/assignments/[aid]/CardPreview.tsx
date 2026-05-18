@@ -1,4 +1,4 @@
-import { buildExamCardBlock } from "@oral-examiner/canvas";
+import { buildExamCardBlock, type ExamCardText } from "@oral-examiner/canvas";
 
 /**
  * What students see in Canvas. Built using the same `buildExamCardBlock`
@@ -12,11 +12,16 @@ import { buildExamCardBlock } from "@oral-examiner/canvas";
 export function CardPreview({
   appBaseUrl,
   canvasAssignmentId,
+  text,
 }: {
   appBaseUrl: string;
   canvasAssignmentId: string;
+  /** Optional effective card-text override (5b.9). When omitted, falls back
+   *  to the package's DEFAULT_EXAM_CARD_TEXT — the per-assignment preview
+   *  on the configure page passes the resolved per-teacher text. */
+  text?: Partial<ExamCardText>;
 }) {
-  const raw = buildExamCardBlock({ appBaseUrl, canvasAssignmentId });
+  const raw = buildExamCardBlock({ appBaseUrl, canvasAssignmentId, text });
   // Drop the begin/end comment markers — they don't render visually but
   // muddy the preview's DOM.
   const html = raw

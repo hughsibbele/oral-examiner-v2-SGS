@@ -6,6 +6,7 @@
 
 export {
   buildExamCardBlock,
+  DEFAULT_EXAM_CARD_TEXT,
   findExamCardBlock,
   findExamCardMarkerBlock,
   hasExamCardBlock,
@@ -14,6 +15,7 @@ export {
   replaceOrAppendExamCardBlock,
   type BuildExamCardArgs,
   type ExamCardMarkerMeta,
+  type ExamCardText,
   type FoundExamCardBlock,
 } from "./install";
 

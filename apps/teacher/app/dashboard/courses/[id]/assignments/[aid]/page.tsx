@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { hasExamCardBlock } from "@oral-examiner/canvas";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getTeacher } from "@/lib/auth/teacher";
+import { resolveCardTextForTeacher } from "@/lib/card-text/resolve";
 import { InstallCardButton } from "../../InstallCardButton";
 import { CardPreview } from "./CardPreview";
 import {
@@ -57,9 +58,12 @@ export default async function AssignmentConfigurePage({
 }: {
   params: Promise<{ id: string; aid: string }>;
 }) {
-  await getTeacher();
+  const auth = await getTeacher();
   const { id: canvasCourseId, aid: canvasAssignmentId } = await params;
   const supabase = await createServerSupabase();
+  const cardText = auth
+    ? await resolveCardTextForTeacher(auth.teacher.id)
+    : undefined;
 
   const { data: assignmentRow } = await supabase
     .from("canvas_assignment_cache")
@@ -192,6 +196,7 @@ export default async function AssignmentConfigurePage({
         <CardPreview
           appBaseUrl={readAppBaseUrl()}
           canvasAssignmentId={canvasAssignmentId}
+          text={cardText}
         />
       </section>
     </div>

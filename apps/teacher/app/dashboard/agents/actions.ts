@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getTeacher } from "@/lib/auth/teacher";
 import { getCanvasConfigForTeacher } from "@/lib/canvas/server";
+import { resolveCardTextForTeacher } from "@/lib/card-text/resolve";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -473,9 +474,11 @@ export async function installCardForAssignment(args: {
       args.canvasCourseId,
       args.canvasAssignmentId,
     );
+    const text = await resolveCardTextForTeacher(auth.teacher.id);
     const cardHtml = buildExamCardBlock({
       appBaseUrl,
       canvasAssignmentId: args.canvasAssignmentId,
+      text,
     });
     const nextDescription = replaceOrAppendExamCardBlock(
       current.description ?? "",

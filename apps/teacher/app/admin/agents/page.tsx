@@ -1,6 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { AgentsEditor, type AgentData } from "./AgentsEditor";
+import { CardTextDefaultsEditor } from "./CardTextDefaultsEditor";
 import { CollapsibleEditor } from "./CollapsibleEditor";
 import {
   getIntakeTotalCapBytes,
@@ -9,6 +10,15 @@ import {
 } from "./actions";
 import { parseIntakeConfig } from "@/lib/intake/types";
 import type { Json } from "@oral-examiner/db";
+
+type CardDefaultsRow = {
+  kicker: string;
+  title: string;
+  body: string;
+  cta_label: string;
+  footnote: string;
+  updated_at: string;
+};
 
 const SYSTEM_PROMPT_META: Record<string, { title: string; subtitle: string }> = {
   student_summary: {
@@ -95,6 +105,14 @@ export default async function AdminAgentsPage() {
   const envelope = envelopeData as
     | { id: number; body: string; updated_at: string }
     | null;
+
+  // Step 0.4: card text defaults singleton (M2b.5b.9)
+  const { data: cardDefaultsData } = await supabase
+    .from("card_text_defaults")
+    .select("kicker, title, body, cta_label, footnote, updated_at")
+    .eq("id", 1)
+    .maybeSingle();
+  const cardDefaults = cardDefaultsData as unknown as CardDefaultsRow | null;
 
   // Step 0.5: system prompts in the prompts table (student_summary, transcription)
   const { data: systemPromptsData, error: systemPromptsErr } = await supabase
@@ -263,6 +281,18 @@ export default async function AdminAgentsPage() {
             />
           );
         })}
+        {cardDefaults && (
+          <CardTextDefaultsEditor
+            initial={{
+              kicker: cardDefaults.kicker,
+              title: cardDefaults.title,
+              body: cardDefaults.body,
+              cta_label: cardDefaults.cta_label,
+              footnote: cardDefaults.footnote,
+            }}
+            updatedAt={cardDefaults.updated_at}
+          />
+        )}
       </div>
 
       {/* Sticky agent picker */}

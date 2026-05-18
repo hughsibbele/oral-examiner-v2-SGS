@@ -1,11 +1,28 @@
 import Link from "next/link";
 import { getTeacher } from "@/lib/auth/teacher";
+import {
+  loadCardTextDefaults,
+  loadTeacherCardOverrides,
+} from "@/lib/card-text/resolve";
 import { CanvasTokenForm } from "./CanvasTokenForm";
+import { CardTextEditor } from "./CardTextEditor";
+
+function readAppBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? ""
+  );
+}
 
 export default async function CanvasSetupPage() {
   const result = await getTeacher();
   const teacher = result?.teacher;
   const hasToken = !!teacher?.canvas_token_encrypted;
+  const [cardDefaults, cardOverrides] = result
+    ? await Promise.all([
+        loadCardTextDefaults(),
+        loadTeacherCardOverrides(result.teacher.id),
+      ])
+    : [null, null];
 
   return (
     <div className="space-y-6">
@@ -32,6 +49,15 @@ export default async function CanvasSetupPage() {
       )}
 
       <CanvasTokenForm hasExisting={hasToken} initialHost={teacher?.canvas_host ?? ""} />
+
+      {cardDefaults && cardOverrides && (
+        <CardTextEditor
+          defaults={cardDefaults}
+          overrides={cardOverrides}
+          appBaseUrl={readAppBaseUrl()}
+          previewAssignmentId="preview-1234"
+        />
+      )}
 
       <section className="surface p-4 text-sm space-y-2">
         <h2 className="font-medium">How to get a Canvas API token</h2>

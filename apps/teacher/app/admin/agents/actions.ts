@@ -80,6 +80,45 @@ export async function updateSafetyEnvelope(formData: FormData): Promise<ActionRe
   return { ok: true };
 }
 
+/**
+ * Update one or more system-default card text fields (M2b.5b.9). Admin-only.
+ * Empty submissions are rejected per-field — the singleton row's columns
+ * are NOT NULL with sane defaults baked in by the migration, so the
+ * teacher-facing path never has to fall through to a hardcoded constant.
+ */
+export async function updateCardTextDefaults(
+  formData: FormData,
+): Promise<ActionResult> {
+  await requireAdmin();
+  const kicker = String(formData.get("kicker") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  const ctaLabel = String(formData.get("cta_label") ?? "").trim();
+  const footnote = String(formData.get("footnote") ?? "").trim();
+  if (!kicker || !title || !body || !ctaLabel || !footnote) {
+    return {
+      ok: false,
+      error: "All five card-text defaults are required — none can be blank.",
+    };
+  }
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("card_text_defaults")
+    .update({
+      kicker,
+      title,
+      body,
+      cta_label: ctaLabel,
+      footnote,
+    })
+    .eq("id", 1);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(AGENTS_PATH);
+  return { ok: true };
+}
+
 export async function updateSystemPrompt(formData: FormData): Promise<ActionResult> {
   const result = await requireAdmin();
   const id = String(formData.get("id") ?? "");

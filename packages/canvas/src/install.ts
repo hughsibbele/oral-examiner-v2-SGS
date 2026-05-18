@@ -27,6 +27,36 @@ export type FoundExamCardBlock = ExamCardMarkerMeta & {
   raw: string;
 };
 
+/**
+ * Plain-text strings teachers (or admins) can override per-teacher. The
+ * structure of the card (logo, colors, padding, layout) is fixed; only
+ * the words change. Each field is plain text — we HTML-escape on insert,
+ * so curly quotes and unicode characters pass through but tags do not.
+ */
+export type ExamCardText = {
+  /** Small ALL-CAPS line above the title. */
+  kicker: string;
+  /** h3 title under the kicker. */
+  title: string;
+  /** Paragraph body between title and CTA. */
+  body: string;
+  /** Button label. */
+  ctaLabel: string;
+  /** Italic line beneath the CTA. */
+  footnote: string;
+};
+
+/** Suite-default copy. Falls back here if no admin/teacher overrides are
+ *  provided. Kept in this file so the package has zero runtime dependency
+ *  on Supabase. */
+export const DEFAULT_EXAM_CARD_TEXT: ExamCardText = {
+  kicker: "Oral Defense · Required for credit",
+  title: "Defend this assignment in a brief oral exam",
+  body: "You’ll have a short spoken conversation with an AI examiner about your work. Find a quiet room with a working microphone; the exam takes about 10–15 minutes and submits to Canvas automatically when you’re done.",
+  ctaLabel: "Start oral exam →",
+  footnote: "Sign in with your @episcopalhighschool.org Google account.",
+};
+
 export type BuildExamCardArgs = {
   /**
    * App origin where the OE student flow lives. The CTA links to
@@ -35,6 +65,12 @@ export type BuildExamCardArgs = {
   appBaseUrl: string;
   /** Canvas assignment id — also used as the URL slug into /exam/[token]. */
   canvasAssignmentId: string;
+  /**
+   * Optional plain-text overrides. Resolver typically reads
+   * teacher_overrides ?? card_text_defaults and passes the effective
+   * shape here. Falls back to DEFAULT_EXAM_CARD_TEXT field-by-field.
+   */
+  text?: Partial<ExamCardText>;
 };
 
 const SCHEMA_VERSION = 1;
@@ -53,15 +89,22 @@ export function buildExamCardBlock(args: BuildExamCardArgs): string {
   const assignmentId = escapeMarkerAttr(args.canvasAssignmentId);
   const examUrl = escapeHtmlAttr(`${base}/exam/${assignmentId}`);
   const logoUrl = escapeHtmlAttr(`${base}/brand/ehs-horizontal.webp`);
+  const text: ExamCardText = {
+    kicker: args.text?.kicker ?? DEFAULT_EXAM_CARD_TEXT.kicker,
+    title: args.text?.title ?? DEFAULT_EXAM_CARD_TEXT.title,
+    body: args.text?.body ?? DEFAULT_EXAM_CARD_TEXT.body,
+    ctaLabel: args.text?.ctaLabel ?? DEFAULT_EXAM_CARD_TEXT.ctaLabel,
+    footnote: args.text?.footnote ?? DEFAULT_EXAM_CARD_TEXT.footnote,
+  };
   return [
     `<!-- oral-examiner:card:begin v=${SCHEMA_VERSION} assignment-id=${assignmentId} -->`,
     `<div style="border:2px solid #7a1e46;border-radius:4px;padding:28px;margin:16px 0;background:#ffffff;font-family:Georgia,'Times New Roman',serif;">`,
     `<img src="${logoUrl}" alt="Episcopal High School" style="display:block;height:50px;width:auto;margin-bottom:18px;" />`,
-    `<div style="color:#54565b;font-size:11px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">Oral Defense &middot; Required for credit</div>`,
-    `<h3 style="margin:0 0 10px 0;color:#1a1a1a;font-size:20px;font-weight:normal;line-height:1.3;">Defend this assignment in a brief oral exam</h3>`,
-    `<p style="margin:0 0 22px 0;color:#333;font-size:15px;line-height:1.6;">You&rsquo;ll have a short spoken conversation with an AI examiner about your work. Find a quiet room with a working microphone; the exam takes about 10&ndash;15 minutes and submits to Canvas automatically when you&rsquo;re done.</p>`,
-    `<a href="${examUrl}" style="display:inline-block;padding:12px 26px;background:#7a1e46;color:#ffffff;border-radius:3px;text-decoration:none;font-family:Georgia,'Times New Roman',serif;font-weight:bold;font-size:15px;letter-spacing:0.3px;">Start oral exam &rarr;</a>`,
-    `<p style="margin:14px 0 0 0;color:#54565b;font-size:12px;font-style:italic;">Sign in with your @episcopalhighschool.org Google account.</p>`,
+    `<div style="color:#54565b;font-size:11px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">${escapeHtmlText(text.kicker)}</div>`,
+    `<h3 style="margin:0 0 10px 0;color:#1a1a1a;font-size:20px;font-weight:normal;line-height:1.3;">${escapeHtmlText(text.title)}</h3>`,
+    `<p style="margin:0 0 22px 0;color:#333;font-size:15px;line-height:1.6;">${escapeHtmlText(text.body)}</p>`,
+    `<a href="${examUrl}" style="display:inline-block;padding:12px 26px;background:#7a1e46;color:#ffffff;border-radius:3px;text-decoration:none;font-family:Georgia,'Times New Roman',serif;font-weight:bold;font-size:15px;letter-spacing:0.3px;">${escapeHtmlText(text.ctaLabel)}</a>`,
+    `<p style="margin:14px 0 0 0;color:#54565b;font-size:12px;font-style:italic;">${escapeHtmlText(text.footnote)}</p>`,
     `</div>`,
     `<!-- oral-examiner:card:end -->`,
   ].join("\n");
@@ -214,6 +257,7 @@ function findCardBlockByAssignmentId(
   // after the anchor is our card div.
   for (let i = opens.length - 1; i >= 0; i--) {
     const open = opens[i];
+    if (!open) continue;
     const closeEnd = findMatchingDivClose(html, open.end);
     if (closeEnd < 0) continue;
     if (closeEnd >= aEnd) {
@@ -273,6 +317,15 @@ function escapeHtmlAttr(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** Escape plain text for HTML body content. Strips tags via escape, so
+ *  teacher-pasted text like `<script>` lands as literal characters. */
+function escapeHtmlText(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
