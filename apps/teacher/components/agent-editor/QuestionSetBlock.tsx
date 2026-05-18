@@ -53,6 +53,10 @@ export function QuestionSetBlock(props: {
   depth: FollowUpDepth;
   readOnly?: boolean;
   actions?: QuestionSetActions;
+  /** Optional yellow banner above the set — used by the template editor to
+   *  remind teachers that edits to a shared teacher-owned set affect every
+   *  template linking it. Pass null/undefined to hide. */
+  sharingWarning?: string | null;
   run: RunAction;
   tagStatus: TagStatus;
 }) {
@@ -64,6 +68,7 @@ export function QuestionSetBlock(props: {
     depth,
     readOnly,
     actions,
+    sharingWarning,
     run,
     tagStatus,
   } = props;
@@ -93,6 +98,12 @@ export function QuestionSetBlock(props: {
           Selecting {totalSelected} questions at {depth} depth lands at ~
           {setEstimateMin} min — over the {SOFT_MAX_DURATION_MIN}-min soft cap.
           Reduce a bucket&apos;s Select N below.
+        </div>
+      )}
+
+      {sharingWarning && !readOnly && (
+        <div className="border-l-4 border-yellow-500 bg-yellow-50 p-2 text-xs text-yellow-900">
+          <strong>Heads up:</strong> {sharingWarning}
         </div>
       )}
 

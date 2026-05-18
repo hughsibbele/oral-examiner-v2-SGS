@@ -735,3 +735,280 @@ export async function cloneQuestionSetForTeacher(
   revalidatePath("/dashboard/agents");
   return { ok: true };
 }
+
+// =========================================================================
+// Question set inline editor — buckets + questions (M2b.5b.6)
+//
+// Teacher-scoped CRUD on teacher-owned question_sets / question_buckets /
+// questions. RLS already gates writes to rows the teacher owns; these
+// actions only add the signed-in check + the revalidate. Editing a
+// system-seeded set (teacher_id IS NULL) fails the RLS write policy and
+// surfaces as a "permission denied" error to the caller.
+//
+// Why these duplicate the admin's actions: admins call `requireAdmin()`
+// and write to system rows; teachers call `getTeacher()` and write to
+// their own rows. Same Supabase shape, different auth check + revalidate
+// targets. The shared QuestionSetBlock component takes whichever set of
+// actions the page wires up.
+// =========================================================================
+
+const TEACHER_AGENT_HUB_PATH = "/dashboard/agents";
+
+function revalidateAgentHub(): void {
+  revalidatePath(TEACHER_AGENT_HUB_PATH);
+}
+
+async function requireSignedInTeacher(): Promise<
+  | { ok: true; teacherId: string }
+  | { ok: false; error: string }
+> {
+  const auth = await getTeacher();
+  if (!auth) return { ok: false, error: "Not signed in." };
+  return { ok: true, teacherId: auth.teacher.id };
+}
+
+export async function updateOwnedQuestionSet(
+  formData: FormData,
+): Promise<ActionResult> {
+  const auth = await requireSignedInTeacher();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  if (!id) return { ok: false, error: "Missing set id." };
+  if (!name) return { ok: false, error: "Name is required." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("question_sets")
+    .update({ name, description: description || null })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAgentHub();
+  return { ok: true };
+}
+
+export async function createOwnedBucket(
+  formData: FormData,
+): Promise<ActionResult> {
+  const auth = await requireSignedInTeacher();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const setId = String(formData.get("question_set_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const selectCount = Number(formData.get("select_count") ?? 1);
+  if (!setId) return { ok: false, error: "Missing set id." };
+  if (!name) return { ok: false, error: "Bucket name is required." };
+  if (!Number.isInteger(selectCount) || selectCount < 0) {
+    return { ok: false, error: "Select count must be a non-negative integer." };
+  }
+
+  const supabase = await createServerSupabase();
+  const { data: existing } = await supabase
+    .from("question_buckets")
+    .select("position")
+    .eq("question_set_id", setId)
+    .order("position", { ascending: false })
+    .limit(1);
+  const nextPos = ((existing?.[0]?.position as number | undefined) ?? -1) + 1;
+
+  const { error } = await supabase.from("question_buckets").insert({
+    question_set_id: setId,
+    name,
+    position: nextPos,
+    select_count: selectCount,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAgentHub();
+  return { ok: true };
+}
+
+export async function updateOwnedBucket(
+  formData: FormData,
+): Promise<ActionResult> {
+  const auth = await requireSignedInTeacher();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const selectCount = Number(formData.get("select_count") ?? 1);
+  if (!id) return { ok: false, error: "Missing bucket id." };
+  if (!name) return { ok: false, error: "Bucket name is required." };
+  if (!Number.isInteger(selectCount) || selectCount < 0) {
+    return { ok: false, error: "Select count must be a non-negative integer." };
+  }
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("question_buckets")
+    .update({ name, select_count: selectCount })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAgentHub();
+  return { ok: true };
+}
+
+export async function deleteOwnedBucket(
+  formData: FormData,
+): Promise<ActionResult> {
+  const auth = await requireSignedInTeacher();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, error: "Missing bucket id." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.from("question_buckets").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAgentHub();
+  return { ok: true };
+}
+
+export async function moveOwnedBucket(
+  formData: FormData,
+): Promise<ActionResult> {
+  const auth = await requireSignedInTeacher();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const id = String(formData.get("id") ?? "");
+  const setId = String(formData.get("question_set_id") ?? "");
+  const direction = String(formData.get("direction") ?? "");
+  if (!id || !setId) return { ok: false, error: "Missing ids." };
+  if (direction !== "up" && direction !== "down") {
+    return { ok: false, error: "Invalid direction." };
+  }
+  return swapPosition({
+    table: "question_buckets",
+    parentColumn: "question_set_id",
+    parentId: setId,
+    rowId: id,
+    direction,
+  });
+}
+
+export async function createOwnedQuestion(
+  formData: FormData,
+): Promise<ActionResult> {
+  const auth = await requireSignedInTeacher();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const bucketId = String(formData.get("question_bucket_id") ?? "");
+  const text = String(formData.get("text") ?? "").trim();
+  if (!bucketId) return { ok: false, error: "Missing bucket id." };
+  if (!text) return { ok: false, error: "Question text is required." };
+
+  const supabase = await createServerSupabase();
+  const { data: existing } = await supabase
+    .from("questions")
+    .select("position")
+    .eq("question_bucket_id", bucketId)
+    .order("position", { ascending: false })
+    .limit(1);
+  const nextPos = ((existing?.[0]?.position as number | undefined) ?? -1) + 1;
+
+  const { error } = await supabase.from("questions").insert({
+    question_bucket_id: bucketId,
+    position: nextPos,
+    text,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAgentHub();
+  return { ok: true };
+}
+
+export async function updateOwnedQuestion(
+  formData: FormData,
+): Promise<ActionResult> {
+  const auth = await requireSignedInTeacher();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const id = String(formData.get("id") ?? "");
+  const text = String(formData.get("text") ?? "").trim();
+  const reference = String(formData.get("reference_snippet") ?? "").trim();
+  if (!id) return { ok: false, error: "Missing question id." };
+  if (!text) return { ok: false, error: "Question text is required." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("questions")
+    .update({ text, reference_snippet: reference || null })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAgentHub();
+  return { ok: true };
+}
+
+export async function deleteOwnedQuestion(
+  formData: FormData,
+): Promise<ActionResult> {
+  const auth = await requireSignedInTeacher();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, error: "Missing question id." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.from("questions").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAgentHub();
+  return { ok: true };
+}
+
+// =========================================================================
+// Position-swap helper (mirrors admin's; sentinel -1 dodges the unique
+// (parent, position) constraint mid-swap)
+// =========================================================================
+
+async function swapPosition(opts: {
+  table: "question_buckets" | "questions";
+  parentColumn: "question_set_id" | "question_bucket_id";
+  parentId: string;
+  rowId: string;
+  direction: "up" | "down";
+}): Promise<ActionResult> {
+  const supabase = await createServerSupabase();
+
+  const { data: current, error: currentErr } = await supabase
+    .from(opts.table)
+    .select("position")
+    .eq("id", opts.rowId)
+    .maybeSingle();
+  if (currentErr || !current) {
+    return { ok: false, error: currentErr?.message ?? "Row not found." };
+  }
+  const currentPos = current.position as number;
+
+  const isUp = opts.direction === "up";
+  const query = supabase
+    .from(opts.table)
+    .select("id, position")
+    .eq(opts.parentColumn as never, opts.parentId as never)
+    .order("position", { ascending: !isUp })
+    .limit(1);
+  const { data: neighborData, error: neighborErr } = isUp
+    ? await query.lt("position", currentPos)
+    : await query.gt("position", currentPos);
+  if (neighborErr) return { ok: false, error: neighborErr.message };
+
+  const neighborRow =
+    (neighborData?.[0] as { id: string; position: number } | undefined) ?? null;
+  if (!neighborRow) return { ok: true }; // already at edge — no-op
+
+  const sentinel = -1;
+  let step;
+  step = await supabase.from(opts.table).update({ position: sentinel }).eq("id", opts.rowId);
+  if (step.error) return { ok: false, error: step.error.message };
+  step = await supabase
+    .from(opts.table)
+    .update({ position: currentPos })
+    .eq("id", neighborRow.id);
+  if (step.error) return { ok: false, error: step.error.message };
+  step = await supabase
+    .from(opts.table)
+    .update({ position: neighborRow.position })
+    .eq("id", opts.rowId);
+  if (step.error) return { ok: false, error: step.error.message };
+
+  revalidateAgentHub();
+  return { ok: true };
+}

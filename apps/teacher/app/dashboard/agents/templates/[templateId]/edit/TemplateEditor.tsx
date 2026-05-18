@@ -22,6 +22,7 @@ import {
   type IntakeActions,
   type QSetRow,
   type QuestionRow,
+  type QuestionSetActions,
 } from "@/components/agent-editor";
 import type { IntakeConfig } from "@/lib/intake/types";
 import { deleteTemplate, setAssignmentAgent } from "../../../actions";
@@ -30,10 +31,18 @@ import {
   addTemplateIntakeAttachmentFromPaste,
   addTemplateIntakeAttachmentFromUpload,
   cloneQuestionSetForTeacher,
+  createOwnedBucket,
+  createOwnedQuestion,
+  deleteOwnedBucket,
+  deleteOwnedQuestion,
+  moveOwnedBucket,
   removeTemplateIntakeAttachment,
   resetTemplateField,
   resetTemplateIntakeConfig,
   setTemplateQuestionSet,
+  updateOwnedBucket,
+  updateOwnedQuestion,
+  updateOwnedQuestionSet,
   updateTemplateEvaluation,
   updateTemplateFlow,
   updateTemplateIntakeToggles,
@@ -48,6 +57,17 @@ const TEMPLATE_INTAKE_ACTIONS: IntakeActions = {
   addFromPaste: addTemplateIntakeAttachmentFromPaste,
   removeAttachment: removeTemplateIntakeAttachment,
   resetIntake: resetTemplateIntakeConfig,
+};
+
+const OWNED_QSET_ACTIONS: QuestionSetActions = {
+  updateSet: updateOwnedQuestionSet,
+  createBucket: createOwnedBucket,
+  updateBucket: updateOwnedBucket,
+  deleteBucket: deleteOwnedBucket,
+  moveBucket: moveOwnedBucket,
+  createQuestion: createOwnedQuestion,
+  updateQuestion: updateOwnedQuestion,
+  deleteQuestion: deleteOwnedQuestion,
 };
 
 /**
@@ -433,7 +453,13 @@ export function TemplateEditor({
             buckets={buckets}
             questionsByBucket={questionsByBucket}
             depth={flowValues.follow_up_depth}
-            readOnly
+            readOnly={qset.teacher_id == null}
+            actions={qset.teacher_id != null ? OWNED_QSET_ACTIONS : undefined}
+            sharingWarning={
+              qset.teacher_id != null && sharedAcrossTemplates > 1
+                ? `This set is linked by ${sharedAcrossTemplates} of your templates — edits here affect every one of them. Clone it (above) first if you want this template to diverge.`
+                : null
+            }
             run={run}
             tagStatus={tagStatus}
           />
@@ -446,12 +472,6 @@ export function TemplateEditor({
                 /admin/agents
               </Link>
               .
-            </p>
-          )}
-          {qset.teacher_id != null && (
-            <p className="muted text-xs px-1">
-              Your custom set. Inline bucket + question editing lands in
-              M2b.5b.6.
             </p>
           )}
         </>
