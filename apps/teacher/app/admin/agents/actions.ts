@@ -578,7 +578,8 @@ export async function removeIntakeAttachment(
   formData: FormData,
 ): Promise<ActionResult> {
   await requireAdmin();
-  const personaId = String(formData.get("persona_id") ?? "");
+  // `id` is the persona row; shared IntakeBlock standardizes on it.
+  const personaId = String(formData.get("id") ?? "");
   const attachmentId = String(formData.get("attachment_id") ?? "");
   if (!personaId) return { ok: false, error: "Missing persona id." };
   if (!attachmentId) return { ok: false, error: "Missing attachment id." };

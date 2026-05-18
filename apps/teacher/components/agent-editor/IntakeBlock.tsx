@@ -2,23 +2,49 @@
 
 import { useRef, useState } from "react";
 import { DrivePicker, type DriveFileRef } from "@/components/DrivePicker";
-import {
-  type ActionResult,
-  addIntakeAttachmentFromDrive,
-  addIntakeAttachmentFromPaste,
-  addIntakeAttachmentFromUpload,
-  removeIntakeAttachment,
-  updateIntakeToggles,
-} from "./actions";
 import type { IntakeAttachment, IntakeConfig } from "@/lib/intake/types";
+import type {
+  AddFromDriveAction,
+  EditorMode,
+  RunAction,
+  ServerFormAction,
+  TagStatus,
+} from "./types";
+
+/**
+ * Per-agent intake editor. Shared between admin (editing the system-default
+ * persona's intake_config) and template (editing a teacher's
+ * exam_template.intake_config) — pass the relevant server actions in.
+ *
+ * Template-mode shows a "Reset to defaults" affordance that re-copies the
+ * current preset's intake_config (or the blank shape for blank-slate
+ * templates); admin mode hides it (the persona's intake_config IS the
+ * default).
+ */
 
 type Props = {
   ns: string;
-  personaId: string;
+  rowId: string;
+  mode: EditorMode;
   intakeConfig: IntakeConfig;
   capBytes: number;
-  run: (tag: string, action: () => Promise<ActionResult>) => void;
-  tagStatus: (tag: string) => string | null;
+  actions: IntakeActions;
+  /** Template mode only — label for the "reset" target ("ChekhovBot
+   *  default" or "blank defaults"). Ignored when mode==='system'. */
+  resetTargetLabel?: string;
+  run: RunAction;
+  tagStatus: TagStatus;
+};
+
+export type IntakeActions = {
+  updateToggles: ServerFormAction;
+  addFromDrive: AddFromDriveAction;
+  addFromUpload: ServerFormAction;
+  addFromPaste: ServerFormAction;
+  removeAttachment: ServerFormAction;
+  /** Template-mode only — re-snapshot intake_config from the linked preset
+   *  (or all-default for blank-slate). Admin mode omits this. */
+  resetIntake?: ServerFormAction;
 };
 
 const ATTACHMENT_PDF_TYPES = [
@@ -26,11 +52,14 @@ const ATTACHMENT_PDF_TYPES = [
   "application/vnd.google-apps.document",
 ];
 
-export function IntakeEditor({
+export function IntakeBlock({
   ns,
-  personaId,
+  rowId,
+  mode,
   intakeConfig,
   capBytes,
+  actions,
+  resetTargetLabel,
   run,
   tagStatus,
 }: Props) {
@@ -47,7 +76,7 @@ export function IntakeEditor({
 
   function handleDrivePick(file: DriveFileRef) {
     run(`${ns}:intake-drive`, () =>
-      addIntakeAttachmentFromDrive(personaId, {
+      actions.addFromDrive(rowId, {
         id: file.id,
         name: file.name,
         mimeType: file.mimeType,
@@ -59,24 +88,70 @@ export function IntakeEditor({
     const file = e.target.files?.[0];
     if (!file) return;
     const fd = new FormData();
-    fd.set("id", personaId);
+    fd.set("id", rowId);
     fd.set("file", file);
     run(`${ns}:intake-upload`, async () => {
-      const result = await addIntakeAttachmentFromUpload(fd);
-      // Reset the input so picking the same file twice re-fires onChange.
+      const result = await actions.addFromUpload(fd);
+      // Reset input so picking the same file twice re-fires onChange.
       if (fileInputRef.current) fileInputRef.current.value = "";
       return result;
     });
   }
 
+  function handleReset() {
+    if (!actions.resetIntake) return;
+    if (
+      !window.confirm(
+        `Reset intake to ${resetTargetLabel ?? "defaults"}? Your overrides and attachments will be discarded.`,
+      )
+    )
+      return;
+    run(`${ns}:intake-reset`, () => {
+      const fd = new FormData();
+      fd.set("id", rowId);
+      return actions.resetIntake!(fd);
+    });
+  }
+
   return (
     <section className="surface p-5 space-y-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="heading text-lg">Intake</h3>
-        <span className="muted text-xs">
-          What the agent sees about the assignment before the student speaks
-        </span>
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="heading text-lg">Intake</h3>
+          {mode === "template" && resetTargetLabel && (
+            <p className="muted text-xs mt-0.5">
+              Editing this template&apos;s intake. Reset to fall back to{" "}
+              <span className="italic">{resetTargetLabel}</span>.
+            </p>
+          )}
+        </div>
+        <div className="flex items-baseline gap-3">
+          <span className="muted text-xs">
+            What the agent sees before the student speaks
+          </span>
+          {mode === "template" && actions.resetIntake && (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="btn px-2 py-0.5 text-xs"
+              title={`Re-copy ${resetTargetLabel ?? "defaults"} into this template`}
+            >
+              reset to defaults
+            </button>
+          )}
+        </div>
       </div>
+
+      {tagStatus(`${ns}:intake-reset`) === "saved" && (
+        <p className="text-xs text-green-700">Intake reset.</p>
+      )}
+      {tagStatus(`${ns}:intake-reset`) &&
+        tagStatus(`${ns}:intake-reset`) !== "saved" &&
+        tagStatus(`${ns}:intake-reset`) !== "saving" && (
+          <p className="text-xs text-red-700">
+            Error: {tagStatus(`${ns}:intake-reset`)}
+          </p>
+        )}
 
       {/* Answer-key warning — yellow + persistent, not dismissible by design */}
       <div className="border-l-4 border-yellow-500 bg-yellow-50 p-3 text-sm text-yellow-900">
@@ -90,11 +165,11 @@ export function IntakeEditor({
 
       {/* Canvas toggles */}
       <form
-        action={(fd) => run(`${ns}:intake-toggles`, () => updateIntakeToggles(fd))}
+        action={(fd) => run(`${ns}:intake-toggles`, () => actions.updateToggles(fd))}
         data-track-dirty
         className="space-y-3"
       >
-        <input type="hidden" name="id" value={personaId} />
+        <input type="hidden" name="id" value={rowId} />
         <div className="space-y-2">
           <label className="flex items-start gap-2 cursor-pointer">
             <input
@@ -190,8 +265,9 @@ export function IntakeEditor({
               <AttachmentRow
                 key={att.id}
                 ns={ns}
-                personaId={personaId}
+                rowId={rowId}
                 attachment={att}
+                removeAttachment={actions.removeAttachment}
                 run={run}
                 tagStatus={tagStatus}
               />
@@ -232,7 +308,7 @@ export function IntakeEditor({
           <form
             action={(fd) =>
               run(`${ns}:intake-paste`, async () => {
-                const r = await addIntakeAttachmentFromPaste(fd);
+                const r = await actions.addFromPaste(fd);
                 if (r.ok) {
                   setShowPaste(false);
                 }
@@ -241,7 +317,7 @@ export function IntakeEditor({
             }
             className="space-y-2 border border-rule rounded p-3 bg-white"
           >
-            <input type="hidden" name="id" value={personaId} />
+            <input type="hidden" name="id" value={rowId} />
             <input
               name="name"
               required
@@ -273,16 +349,18 @@ export function IntakeEditor({
 
 function AttachmentRow({
   ns,
-  personaId,
+  rowId,
   attachment,
+  removeAttachment,
   run,
   tagStatus,
 }: {
   ns: string;
-  personaId: string;
+  rowId: string;
   attachment: IntakeAttachment;
-  run: (tag: string, action: () => Promise<ActionResult>) => void;
-  tagStatus: (tag: string) => string | null;
+  removeAttachment: ServerFormAction;
+  run: RunAction;
+  tagStatus: TagStatus;
 }) {
   const del = `${ns}:intake-rm:${attachment.id}`;
   const status = tagStatus(del);
@@ -303,9 +381,9 @@ function AttachmentRow({
           if (!window.confirm(`Remove "${attachment.name}"?`)) return;
           run(del, () => {
             const fd = new FormData();
-            fd.set("persona_id", personaId);
+            fd.set("id", rowId);
             fd.set("attachment_id", attachment.id);
-            return removeIntakeAttachment(fd);
+            return removeAttachment(fd);
           });
         }}
       >
@@ -346,3 +424,4 @@ function StatusInline({ status }: { status: string | null }) {
   if (status === "saved") return <span className="text-xs text-green-700">Saved.</span>;
   return <span className="text-xs text-red-700">Error: {status}</span>;
 }
+

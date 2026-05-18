@@ -29,8 +29,12 @@ export type {
 export { QuestionSetBlock } from "./QuestionSetBlock";
 export type { QuestionSetActions } from "./QuestionSetBlock";
 
+export { IntakeBlock } from "./IntakeBlock";
+export type { IntakeActions } from "./IntakeBlock";
+
 export type {
   ActionResult,
+  AddFromDriveAction,
   BucketRow,
   EditorMode,
   PersonaRow,

@@ -6,6 +6,13 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 /** Generic server-action signature accepted by the editor blocks. */
 export type ServerFormAction = (fd: FormData) => Promise<ActionResult>;
 
+/** Non-FormData action used by the Drive picker — picker hands back a typed
+ *  file ref synchronously, no need to serialize through FormData. */
+export type AddFromDriveAction = (
+  rowId: string,
+  driveFile: { id: string; name: string; mimeType: string },
+) => Promise<ActionResult>;
+
 /**
  * Run function injected by the page-level shell (AgentsEditor or
  * TemplateEditor). Each form passes its tag + the action thunk; the

@@ -3,19 +3,23 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   type ActionResult,
+  addIntakeAttachmentFromDrive,
+  addIntakeAttachmentFromPaste,
+  addIntakeAttachmentFromUpload,
   createBucket,
   createQuestion,
   deleteBucket,
   deleteQuestion,
   moveBucket,
+  removeIntakeAttachment,
   updateBucket,
   updateEvaluation,
   updateFlow,
+  updateIntakeToggles,
   updatePersona,
   updateQuestion,
   updateQuestionSet,
 } from "./actions";
-import { IntakeEditor } from "./IntakeEditor";
 import type { IntakeConfig } from "@/lib/intake/types";
 import {
   estimateDurationMin,
@@ -25,13 +29,25 @@ import {
 import {
   EvaluationBlock,
   FlowBlock,
+  IntakeBlock,
   PersonaBlock,
   QuestionSetBlock,
   useDirtyBody,
   type BucketRow,
+  type IntakeActions,
   type QSetRow,
   type QuestionRow,
 } from "@/components/agent-editor";
+
+const ADMIN_INTAKE_ACTIONS: IntakeActions = {
+  updateToggles: updateIntakeToggles,
+  addFromDrive: addIntakeAttachmentFromDrive,
+  addFromUpload: addIntakeAttachmentFromUpload,
+  addFromPaste: addIntakeAttachmentFromPaste,
+  removeAttachment: removeIntakeAttachment,
+  // Admin mode: persona's intake_config IS the default; no reset affordance.
+  resetIntake: undefined,
+};
 
 type Persona = {
   id: string;
@@ -239,11 +255,13 @@ function AgentCard({
         />
 
         {/* Intake config (Canvas toggles + reference materials) */}
-        <IntakeEditor
+        <IntakeBlock
           ns={ns}
-          personaId={persona.id}
+          rowId={persona.id}
+          mode="system"
           intakeConfig={agent.intakeConfig}
           capBytes={intakeCapBytes}
+          actions={ADMIN_INTAKE_ACTIONS}
           run={run}
           tagStatus={tagStatus}
         />

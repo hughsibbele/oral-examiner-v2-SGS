@@ -4,6 +4,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { getTeacher } from "@/lib/auth/teacher";
 import { parseIntakeConfig } from "@/lib/intake/types";
 import type { Json } from "@oral-examiner/db";
+import { getTemplateIntakeTotalCapBytes } from "./actions";
 import { TemplateEditor, type TemplateEditorData } from "./TemplateEditor";
 
 type FollowUpDepth = "light" | "medium" | "deep";
@@ -102,6 +103,7 @@ export default async function TemplateEditPage({
   }
   if (!templateData) notFound();
   const template = templateData as unknown as TemplateRow;
+  const intakeCapBytes = await getTemplateIntakeTotalCapBytes();
 
   const { data: presetData } = template.personality_preset_id
     ? await supabase
@@ -250,7 +252,7 @@ export default async function TemplateEditPage({
         </p>
       </div>
 
-      <TemplateEditor data={data} />
+      <TemplateEditor data={data} intakeCapBytes={intakeCapBytes} />
     </div>
   );
 }

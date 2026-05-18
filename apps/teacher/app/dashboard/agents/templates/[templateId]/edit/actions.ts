@@ -1,11 +1,36 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getTeacher } from "@/lib/auth/teacher";
+import {
+  getTeacherGoogleClient,
+  GoogleAuthError,
+} from "@/lib/google/auth";
+import {
+  extractPdfText,
+  extractPdfTextFromDrive,
+  PdfExtractionError,
+} from "@/lib/intake/pdf-to-text";
+import {
+  DEFAULT_INTAKE_CONFIG,
+  parseIntakeConfig,
+  type IntakeAttachment,
+  type IntakeConfig,
+} from "@/lib/intake/types";
 import type { Json } from "@oral-examiner/db";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+/** Per-attachment file cap (before extraction) — matches admin actions. */
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+/** Total intake-pack cap (sum of extracted-text byte sizes). Mirrors the
+ *  admin's `INTAKE_TOTAL_CAP_BYTES` knob so both sides honor the same cap. */
+const MAX_TOTAL_INTAKE_BYTES = Number(
+  process.env.INTAKE_TOTAL_CAP_BYTES ?? 500 * 1024,
+);
 
 /**
  * Per-template editor actions (M2b.5b.3). Each action writes to a
@@ -48,6 +73,7 @@ type TemplateRow = {
   personality_preset_id: string | null;
   locked_at: string | null;
   name: string;
+  intake_config: Json;
 };
 
 type PresetRow = {
@@ -78,7 +104,7 @@ async function loadTemplateContext(templateId: string): Promise<LoadResult> {
   const { data: template, error: tplErr } = await supabase
     .from("exam_templates")
     .select(
-      "id, teacher_id, personality_preset_id, locked_at, name",
+      "id, teacher_id, personality_preset_id, locked_at, name, intake_config",
     )
     .eq("id", templateId)
     .maybeSingle();
@@ -296,4 +322,240 @@ export async function updateTemplateName(
 
   revalidateEditPage(template);
   return { ok: true };
+}
+
+// =========================================================================
+// Intake config (per-template; mirrors the admin actions but writes to
+// exam_templates.intake_config, scoped by RLS to this teacher's row).
+// =========================================================================
+
+/** Sum of attachment byte_size across a config; used for cap enforcement. */
+function totalIntakeBytes(cfg: IntakeConfig): number {
+  return cfg.attachments.reduce((n, a) => n + (a.byte_size || 0), 0);
+}
+
+function checkTotalCap(
+  cfg: IntakeConfig,
+  newBytes: number,
+): { ok: true } | { ok: false; error: string } {
+  const after = totalIntakeBytes(cfg) + newBytes;
+  if (after > MAX_TOTAL_INTAKE_BYTES) {
+    const usedKb = (totalIntakeBytes(cfg) / 1024).toFixed(0);
+    const capKb = (MAX_TOTAL_INTAKE_BYTES / 1024).toFixed(0);
+    const addKb = (newBytes / 1024).toFixed(1);
+    return {
+      ok: false,
+      error: `Would exceed total cap (${usedKb} KB used + ${addKb} KB new > ${capKb} KB cap). Remove a snippet first or trim this one.`,
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * Round-trip helper: load the template's intake_config, run a mutator,
+ * write back. `mutate` returns either the new shape or an error message.
+ * Locked templates reject all writes (caught upstream in loadTemplateContext).
+ */
+async function withTemplateIntake(
+  templateId: string,
+  mutate: (cfg: IntakeConfig) => IntakeConfig | { error: string },
+): Promise<ActionResult> {
+  const ctx = await loadTemplateContext(templateId);
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+  const { template } = ctx;
+
+  const current = parseIntakeConfig(template.intake_config);
+  const result = mutate(current);
+  if ("error" in result) return { ok: false, error: result.error };
+
+  const supabase = await createServerSupabase();
+  const { error: writeErr } = await supabase
+    .from("exam_templates")
+    .update({ intake_config: result as unknown as never })
+    .eq("id", template.id);
+  if (writeErr) return { ok: false, error: writeErr.message };
+
+  revalidateEditPage(template);
+  return { ok: true };
+}
+
+export async function updateTemplateIntakeToggles(
+  formData: FormData,
+): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "");
+  const useDesc = formData.get("use_canvas_description") === "on";
+  const useSub = formData.get("use_canvas_submission") === "on";
+  return withTemplateIntake(id, (cfg) => ({
+    ...cfg,
+    use_canvas_description: useDesc,
+    use_canvas_submission: useSub,
+  }));
+}
+
+export async function addTemplateIntakeAttachmentFromDrive(
+  templateId: string,
+  driveFile: { id: string; name: string; mimeType: string },
+): Promise<ActionResult> {
+  if (!driveFile?.id) return { ok: false, error: "Missing Drive file id." };
+  const auth = await getTeacher();
+  if (!auth) return { ok: false, error: "Not signed in." };
+
+  let extracted;
+  try {
+    const oauth = await getTeacherGoogleClient(auth.teacher.id);
+    extracted = await extractPdfTextFromDrive(driveFile.id, oauth, {
+      mimeType: driveFile.mimeType,
+    });
+  } catch (err) {
+    if (err instanceof GoogleAuthError) {
+      return { ok: false, error: `Drive auth: ${err.message}` };
+    }
+    if (err instanceof PdfExtractionError) {
+      return { ok: false, error: `Could not extract text: ${err.message}` };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Drive fetch failed.",
+    };
+  }
+
+  const attachment: IntakeAttachment = {
+    id: randomUUID(),
+    kind: "drive",
+    name: driveFile.name,
+    content: extracted.text,
+    byte_size: Buffer.byteLength(extracted.text, "utf8"),
+    drive_file_id: driveFile.id,
+    drive_mime_type: driveFile.mimeType,
+    created_at: new Date().toISOString(),
+  };
+  return withTemplateIntake(templateId, (cfg) => {
+    const check = checkTotalCap(cfg, attachment.byte_size);
+    if (!check.ok) return { error: check.error };
+    return { ...cfg, attachments: [...cfg.attachments, attachment] };
+  });
+}
+
+export async function addTemplateIntakeAttachmentFromUpload(
+  formData: FormData,
+): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, error: "Missing template id." };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "Pick a PDF to upload." };
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    return {
+      ok: false,
+      error: `File is ${(file.size / 1024 / 1024).toFixed(1)}MB, exceeds 10MB cap.`,
+    };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  let extracted;
+  try {
+    extracted = await extractPdfText({ buffer, filename: file.name });
+  } catch (err) {
+    if (err instanceof PdfExtractionError) {
+      return { ok: false, error: `Could not extract text: ${err.message}` };
+    }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Extraction failed.",
+    };
+  }
+
+  const attachment: IntakeAttachment = {
+    id: randomUUID(),
+    kind: "upload",
+    name: file.name,
+    content: extracted.text,
+    byte_size: Buffer.byteLength(extracted.text, "utf8"),
+    created_at: new Date().toISOString(),
+  };
+  return withTemplateIntake(id, (cfg) => {
+    const check = checkTotalCap(cfg, attachment.byte_size);
+    if (!check.ok) return { error: check.error };
+    return { ...cfg, attachments: [...cfg.attachments, attachment] };
+  });
+}
+
+export async function addTemplateIntakeAttachmentFromPaste(
+  formData: FormData,
+): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const content = String(formData.get("content") ?? "").trim();
+  if (!id) return { ok: false, error: "Missing template id." };
+  if (!name) return { ok: false, error: "Give the snippet a name." };
+  if (!content) return { ok: false, error: "Paste some text first." };
+  if (Buffer.byteLength(content, "utf8") > MAX_ATTACHMENT_BYTES) {
+    return { ok: false, error: "Pasted text exceeds 10MB cap." };
+  }
+
+  const attachment: IntakeAttachment = {
+    id: randomUUID(),
+    kind: "paste",
+    name,
+    content,
+    byte_size: Buffer.byteLength(content, "utf8"),
+    created_at: new Date().toISOString(),
+  };
+  return withTemplateIntake(id, (cfg) => {
+    const check = checkTotalCap(cfg, attachment.byte_size);
+    if (!check.ok) return { error: check.error };
+    return { ...cfg, attachments: [...cfg.attachments, attachment] };
+  });
+}
+
+export async function removeTemplateIntakeAttachment(
+  formData: FormData,
+): Promise<ActionResult> {
+  const templateId = String(formData.get("id") ?? "");
+  const attachmentId = String(formData.get("attachment_id") ?? "");
+  if (!templateId) return { ok: false, error: "Missing template id." };
+  if (!attachmentId) return { ok: false, error: "Missing attachment id." };
+
+  return withTemplateIntake(templateId, (cfg) => ({
+    ...cfg,
+    attachments: cfg.attachments.filter((a) => a.id !== attachmentId),
+  }));
+}
+
+/**
+ * Re-snapshot the template's intake_config from its linked preset (or to
+ * the all-default blank shape if the template is blank-slate). This is the
+ * template-level "reset to defaults" action — the equivalent of clicking
+ * "reset to default" on a single override field, but for the whole intake
+ * config blob. Discards every attachment + toggle override.
+ */
+export async function resetTemplateIntakeConfig(
+  formData: FormData,
+): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "");
+  const ctx = await loadTemplateContext(id);
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+  const { template, preset } = ctx;
+
+  const fresh = preset
+    ? parseIntakeConfig(preset.intake_config)
+    : DEFAULT_INTAKE_CONFIG;
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("exam_templates")
+    .update({ intake_config: fresh as unknown as never })
+    .eq("id", template.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateEditPage(template);
+  return { ok: true };
+}
+
+/** Public cap (KB) for the UI to display. Lives alongside the intake
+ *  actions; admin's `getIntakeTotalCapBytes` reads the same env var. */
+export async function getTemplateIntakeTotalCapBytes(): Promise<number> {
+  return MAX_TOTAL_INTAKE_BYTES;
 }

@@ -11,24 +11,41 @@ import {
 import {
   EvaluationBlock,
   FlowBlock,
+  IntakeBlock,
   PersonaBlock,
   QuestionSetBlock,
   SaveRow,
   useDirtyBody,
   type ActionResult,
   type BucketRow,
+  type IntakeActions,
   type QSetRow,
   type QuestionRow,
 } from "@/components/agent-editor";
 import type { IntakeConfig } from "@/lib/intake/types";
 import { deleteTemplate, setAssignmentAgent } from "../../../actions";
 import {
+  addTemplateIntakeAttachmentFromDrive,
+  addTemplateIntakeAttachmentFromPaste,
+  addTemplateIntakeAttachmentFromUpload,
+  removeTemplateIntakeAttachment,
   resetTemplateField,
+  resetTemplateIntakeConfig,
   updateTemplateEvaluation,
   updateTemplateFlow,
+  updateTemplateIntakeToggles,
   updateTemplateName,
   updateTemplatePersona,
 } from "./actions";
+
+const TEMPLATE_INTAKE_ACTIONS: IntakeActions = {
+  updateToggles: updateTemplateIntakeToggles,
+  addFromDrive: addTemplateIntakeAttachmentFromDrive,
+  addFromUpload: addTemplateIntakeAttachmentFromUpload,
+  addFromPaste: addTemplateIntakeAttachmentFromPaste,
+  removeAttachment: removeTemplateIntakeAttachment,
+  resetIntake: resetTemplateIntakeConfig,
+};
 
 /**
  * Standalone-template editor. Loaded by templateId (not assignment id); the
@@ -91,7 +108,13 @@ type Status =
   | { kind: "saved"; tag: string }
   | { kind: "error"; tag: string; msg: string };
 
-export function TemplateEditor({ data }: { data: TemplateEditorData }) {
+export function TemplateEditor({
+  data,
+  intakeCapBytes,
+}: {
+  data: TemplateEditorData;
+  intakeCapBytes: number;
+}) {
   const { template, preset, qset, buckets, questionsByBucket, bindings } = data;
   const ns = template.id;
   const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -333,8 +356,20 @@ export function TemplateEditor({ data }: { data: TemplateEditorData }) {
         tagStatus={tagStatus}
       />
 
-      {/* Intake — read-only stub until M2b.5b.4 */}
-      <IntakeReadOnlyPanel templateIntake={template.intake_config} />
+      {/* Intake */}
+      <IntakeBlock
+        ns={ns}
+        rowId={template.id}
+        mode="template"
+        intakeConfig={template.intake_config}
+        capBytes={intakeCapBytes}
+        actions={TEMPLATE_INTAKE_ACTIONS}
+        resetTargetLabel={
+          preset ? `${preset.name} default` : "blank defaults"
+        }
+        run={run}
+        tagStatus={tagStatus}
+      />
 
       {/* Flow */}
       <FlowBlock
@@ -415,38 +450,3 @@ export function TemplateEditor({ data }: { data: TemplateEditorData }) {
   );
 }
 
-function IntakeReadOnlyPanel({
-  templateIntake,
-}: {
-  templateIntake: IntakeConfig;
-}) {
-  const attachmentCount = templateIntake.attachments.length;
-  return (
-    <section className="surface p-5 space-y-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="heading text-lg">Intake</h3>
-        <span className="muted text-xs">
-          Context the agent receives before the exam
-        </span>
-      </div>
-      <ul className="text-sm space-y-1">
-        <li>
-          {templateIntake.use_canvas_description ? "✓" : "○"} Canvas assignment
-          description
-        </li>
-        <li>
-          {templateIntake.use_canvas_submission ? "✓" : "○"} Student&rsquo;s
-          Canvas submission
-        </li>
-        <li>
-          {attachmentCount === 0
-            ? "○ No reference attachments"
-            : `✓ ${attachmentCount} reference attachment${attachmentCount === 1 ? "" : "s"}`}
-        </li>
-      </ul>
-      <p className="muted text-xs">
-        Per-template intake editing ships in M2b.5b.4.
-      </p>
-    </section>
-  );
-}
