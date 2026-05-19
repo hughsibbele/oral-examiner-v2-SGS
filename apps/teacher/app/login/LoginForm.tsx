@@ -66,8 +66,20 @@ export function LoginForm() {
 
         {error && (
           <div className="surface p-3 text-sm border-maroon">
-            <div className="font-medium text-maroon">Sign-in error: {error}</div>
-            {reason && <div className="muted mt-1 text-xs">{reason}</div>}
+            <div className="font-medium text-maroon">
+              {reason === "student_wrong_domain"
+                ? "This exam is for EHS students only."
+                : `Sign-in error: ${error}`}
+            </div>
+            {reason && reason !== "student_wrong_domain" && (
+              <div className="muted mt-1 text-xs">{reason}</div>
+            )}
+            {reason === "student_wrong_domain" && (
+              <div className="muted mt-1 text-xs">
+                Sign in with your @episcopalhighschool.org Google account. If
+                you&apos;re seeing this in error, email your teacher.
+              </div>
+            )}
           </div>
         )}
 

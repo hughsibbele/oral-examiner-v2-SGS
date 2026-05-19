@@ -6,6 +6,7 @@ import { getTeacher } from "@/lib/auth/teacher";
 import { resolveCardTextForTeacher } from "@/lib/card-text/resolve";
 import { InstallCardButton } from "../../InstallCardButton";
 import { CardPreview } from "./CardPreview";
+import { SessionsList } from "./SessionsList";
 import {
   TemplatePicker,
   type AgentOption,
@@ -199,6 +200,11 @@ export default async function AssignmentConfigurePage({
           text={cardText}
         />
       </section>
+
+      <SessionsList
+        canvasCourseId={canvasCourseId}
+        canvasAssignmentId={canvasAssignmentId}
+      />
     </div>
   );
 }

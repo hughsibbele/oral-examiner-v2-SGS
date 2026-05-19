@@ -67,9 +67,27 @@ export async function GET(request: Request) {
   const isStudentPath = next.startsWith("/exam/");
 
   if (isStudentPath) {
-    // Student-side upsert is deferred — needs Canvas roster cache (Phase B)
-    // to resolve canvas_user_id from email. For now, just complete auth and
-    // let /exam/<token> handle the rest when it actually exists.
+    // Domain gate students to @episcopalhighschool.org. Mirrors the
+    // teacher-side check in ensureTeacherForUser. The Google `hd` hint in
+    // LoginForm restricts the account picker, but a determined user can
+    // bypass it via direct OAuth URL — this is the server-side enforcement.
+    // Roster check (must be enrolled in the specific course) happens later
+    // in /exam/[token]'s resolver; this catches the wrong-domain case early
+    // so non-EHS users see a clear error instead of "not enrolled."
+    const allowedDomain =
+      process.env.ADMIN_EMAIL_DOMAIN ?? "episcopalhighschool.org";
+    if (!user.email.toLowerCase().endsWith(`@${allowedDomain}`)) {
+      await supabase.auth.signOut();
+      const url = new URL(`${origin}/login`);
+      url.searchParams.set("error", "not_authorized");
+      url.searchParams.set("reason", "student_wrong_domain");
+      url.searchParams.set("next", next);
+      return redirectWithCookies(url.toString(), captured);
+    }
+
+    // Student-row resolution (anonymized roster lookup) is deferred to
+    // /exam/[token]'s page handler — needs the canvas_assignment_id from
+    // the URL to scope the roster check to the right course.
     return redirectWithCookies(`${origin}${next}`, captured);
   }
 

@@ -198,13 +198,18 @@ export type Database = {
         Row: {
           audio_url: string | null
           call_duration_sec: number | null
+          canvas_assignment_id: string
           canvas_draft_comment_id: string | null
           canvas_submission_id: string | null
           completed_at: string | null
           created_at: string
+          eval_error: string | null
           eval_text: string | null
-          exam_template_id: string
+          exam_template_id: string | null
+          excluded_reason: string | null
           id: string
+          live_minutes_used: number
+          personality_preset_id: string | null
           selected_questions: Json | null
           state: Database["public"]["Enums"]["exam_session_state"]
           student_id: string
@@ -216,13 +221,18 @@ export type Database = {
         Insert: {
           audio_url?: string | null
           call_duration_sec?: number | null
+          canvas_assignment_id: string
           canvas_draft_comment_id?: string | null
           canvas_submission_id?: string | null
           completed_at?: string | null
           created_at?: string
+          eval_error?: string | null
           eval_text?: string | null
-          exam_template_id: string
+          exam_template_id?: string | null
+          excluded_reason?: string | null
           id?: string
+          live_minutes_used?: number
+          personality_preset_id?: string | null
           selected_questions?: Json | null
           state?: Database["public"]["Enums"]["exam_session_state"]
           student_id: string
@@ -234,13 +244,18 @@ export type Database = {
         Update: {
           audio_url?: string | null
           call_duration_sec?: number | null
+          canvas_assignment_id?: string
           canvas_draft_comment_id?: string | null
           canvas_submission_id?: string | null
           completed_at?: string | null
           created_at?: string
+          eval_error?: string | null
           eval_text?: string | null
-          exam_template_id?: string
+          exam_template_id?: string | null
+          excluded_reason?: string | null
           id?: string
+          live_minutes_used?: number
+          personality_preset_id?: string | null
           selected_questions?: Json | null
           state?: Database["public"]["Enums"]["exam_session_state"]
           student_id?: string
@@ -255,6 +270,13 @@ export type Database = {
             columns: ["exam_template_id"]
             isOneToOne: false
             referencedRelation: "exam_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_sessions_personality_preset_id_fkey"
+            columns: ["personality_preset_id"]
+            isOneToOne: false
+            referencedRelation: "personality_presets"
             referencedColumns: ["id"]
           },
           {
@@ -869,11 +891,18 @@ export type Database = {
         Args: { p_default_cap: number; p_teacher_id: string }
         Returns: boolean
       }
+      current_student_id: { Args: never; Returns: string }
+      current_teacher_id: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       refund_gemini_live_minutes: {
-        Args: { p_teacher_id: string; p_minutes: number }
+        Args: { p_minutes: number; p_teacher_id: string }
         Returns: undefined
       }
+      refund_gemini_live_minutes_session: {
+        Args: { p_exam_session_id: string; p_minutes: number }
+        Returns: undefined
+      }
+      teacher_owns_exam_template: { Args: { t_id: string }; Returns: boolean }
     }
     Enums: {
       exam_session_state:
@@ -910,8 +939,7 @@ export type Tables<
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
