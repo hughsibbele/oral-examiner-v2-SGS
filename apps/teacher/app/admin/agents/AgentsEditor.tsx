@@ -27,12 +27,14 @@ import {
   type FollowUpDepth,
 } from "@/lib/runtime/flow-parameters";
 import {
+  AutoSaveStatusPill,
   EvaluationBlock,
   FlowBlock,
   IntakeBlock,
   PersonaBlock,
   QuestionSetBlock,
   useDirtyBody,
+  type AutoSaveStatus,
   type BucketRow,
   type IntakeActions,
   type QSetRow,
@@ -73,11 +75,7 @@ export type AgentData = {
   questionsByBucket: Record<string, QuestionRow[]>;
 };
 
-type Status =
-  | { kind: "idle" }
-  | { kind: "saving"; tag: string }
-  | { kind: "saved"; tag: string }
-  | { kind: "error"; tag: string; msg: string };
+type Status = AutoSaveStatus;
 
 export function AgentsEditor({
   agents,
@@ -96,7 +94,7 @@ export function AgentsEditor({
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
-        setStatus({ kind: "saved", tag });
+        setStatus({ kind: "saved", tag, at: Date.now() });
         setTimeout(() => {
           setStatus((s) => (s.kind === "saved" && s.tag === tag ? { kind: "idle" } : s));
         }, 2000);
@@ -124,6 +122,7 @@ export function AgentsEditor({
           tagStatus={tagStatus}
         />
       ))}
+      <AutoSaveStatusPill status={status} />
     </div>
   );
 }
@@ -249,6 +248,7 @@ function AgentCard({
             closing_text: persona.closing_text,
           }}
           ns={ns}
+          freshnessKey={persona.updated_at}
           saveAction={updatePersona}
           run={run}
           tagStatus={tagStatus}
@@ -261,6 +261,7 @@ function AgentCard({
           mode="system"
           intakeConfig={agent.intakeConfig}
           capBytes={intakeCapBytes}
+          freshnessKey={persona.updated_at}
           actions={ADMIN_INTAKE_ACTIONS}
           run={run}
           tagStatus={tagStatus}
@@ -278,6 +279,7 @@ function AgentCard({
           }}
           totalQuestions={totalSelected}
           ns={ns}
+          freshnessKey={persona.updated_at}
           saveAction={updateFlow}
           run={run}
           tagStatus={tagStatus}
@@ -320,6 +322,7 @@ function AgentCard({
             rubric_body: persona.rubric_body,
           }}
           ns={ns}
+          freshnessKey={persona.updated_at}
           saveAction={updateEvaluation}
           run={run}
           tagStatus={tagStatus}

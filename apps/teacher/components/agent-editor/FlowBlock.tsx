@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   estimateDurationMin,
   MINUTES_PER_QUESTION,
   SOFT_MAX_DURATION_MIN,
   type FollowUpDepth,
 } from "@/lib/runtime/flow-parameters";
-import { Field, InheritIndicator, SaveRow } from "./Primitives";
+import {
+  Field,
+  InheritIndicator,
+  useAutoSaveForm,
+  useFormSaveCallback,
+} from "./Primitives";
 import {
   type EditorMode,
   type RunAction,
@@ -52,6 +57,7 @@ export function FlowBlock(props: {
   overrideMask?: FlowOverrideMask;
   resetField?: ServerFormAction;
   ns: string;
+  freshnessKey: string;
   saveAction: ServerFormAction;
   run: RunAction;
   tagStatus: TagStatus;
@@ -65,6 +71,7 @@ export function FlowBlock(props: {
     overrideMask,
     resetField,
     ns,
+    freshnessKey,
     saveAction,
     run,
     tagStatus,
@@ -79,9 +86,19 @@ export function FlowBlock(props: {
     values.flow_body,
   );
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const save = useFormSaveCallback({
+    formRef,
+    tag: `${ns}:flow`,
+    run,
+    action: saveAction,
+  });
+  useAutoSaveForm({ formRef, save, freshnessKey });
+
   return (
     <form
-      action={(fd) => run(`${ns}:flow`, () => saveAction(fd))}
+      ref={formRef}
+      onSubmit={(e) => e.preventDefault()}
       data-track-dirty
       className="surface p-5 space-y-4"
     >
@@ -245,7 +262,7 @@ export function FlowBlock(props: {
         </p>
       )}
 
-      <SaveRow status={tagStatus(`${ns}:flow`)} label="Save flow" />
+      {/* Auto-save: status surfaces in the page-level AutoSaveStatusPill. */}
     </form>
   );
 }

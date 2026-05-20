@@ -6,9 +6,14 @@ export {
   SaveRow,
   StatusLine,
   isFormDirty,
+  useAutoSaveForm,
   useDirtyBody,
+  useFormSaveCallback,
 } from "./Primitives";
 export type { SaveStatus } from "./Primitives";
+
+export { AutoSaveStatusPill } from "./AutoSaveStatusPill";
+export type { AutoSaveStatus } from "./AutoSaveStatusPill";
 
 export { EvaluationBlock } from "./EvaluationBlock";
 export type {

@@ -9,15 +9,18 @@ import {
   type FollowUpDepth,
 } from "@/lib/runtime/flow-parameters";
 import {
+  AutoSaveStatusPill,
   EvaluationBlock,
   FlowBlock,
   IntakeBlock,
   PersonaBlock,
   QuestionSetBlock,
   QuestionSetPicker,
-  SaveRow,
+  useAutoSaveForm,
   useDirtyBody,
+  useFormSaveCallback,
   type ActionResult,
+  type AutoSaveStatus,
   type BucketRow,
   type IntakeActions,
   type QSetRow,
@@ -131,11 +134,7 @@ export type TemplateEditorData = {
   }[];
 };
 
-type Status =
-  | { kind: "idle" }
-  | { kind: "saving"; tag: string }
-  | { kind: "saved"; tag: string }
-  | { kind: "error"; tag: string; msg: string };
+type Status = AutoSaveStatus;
 
 export function TemplateEditor({
   data,
@@ -167,7 +166,7 @@ export function TemplateEditor({
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
-        setStatus({ kind: "saved", tag });
+        setStatus({ kind: "saved", tag, at: Date.now() });
         setTimeout(() => {
           setStatus((s) =>
             s.kind === "saved" && s.tag === tag ? { kind: "idle" } : s,
@@ -357,27 +356,14 @@ export function TemplateEditor({
         </section>
       )}
 
-      {/* Template name */}
-      <form
-        action={(fd) => run(`${ns}:name`, () => updateTemplateName(fd))}
-        data-track-dirty
-        className="surface p-5 space-y-3"
-      >
-        <input type="hidden" name="id" value={template.id} />
-        <div className="flex items-baseline justify-between">
-          <h3 className="heading text-lg">Template name</h3>
-          <span className="muted text-xs">
-            How this template appears in the Agent hub.
-          </span>
-        </div>
-        <input
-          name="name"
-          defaultValue={template.name}
-          required
-          className="w-full border border-rule rounded px-3 py-2 text-sm font-medium"
-        />
-        <SaveRow status={tagStatus(`${ns}:name`)} label="Save name" small />
-      </form>
+      {/* Template name — auto-saves on blur / 1.5s debounce. */}
+      <TemplateNameForm
+        ns={ns}
+        rowId={template.id}
+        defaultName={template.name}
+        freshnessKey={template.updated_at}
+        run={run}
+      />
 
       {/* Persona */}
       <PersonaBlock
@@ -396,6 +382,7 @@ export function TemplateEditor({
         }
         overrideMask={personaOverrideMask}
         ns={ns}
+        freshnessKey={template.updated_at}
         saveAction={updateTemplatePersona}
         resetField={resetTemplateField}
         run={run}
@@ -409,6 +396,7 @@ export function TemplateEditor({
         mode="template"
         intakeConfig={template.intake_config}
         capBytes={intakeCapBytes}
+        freshnessKey={template.updated_at}
         actions={TEMPLATE_INTAKE_ACTIONS}
         resetTargetLabel={
           preset ? `${preset.name} default` : "blank defaults"
@@ -434,6 +422,7 @@ export function TemplateEditor({
         }
         overrideMask={flowOverrideMask}
         ns={ns}
+        freshnessKey={template.updated_at}
         saveAction={updateTemplateFlow}
         resetField={resetTemplateField}
         run={run}
@@ -507,12 +496,66 @@ export function TemplateEditor({
         }
         overrideMask={evalOverrideMask}
         ns={ns}
+        freshnessKey={template.updated_at}
         saveAction={updateTemplateEvaluation}
         resetField={resetTemplateField}
         run={run}
         tagStatus={tagStatus}
       />
+      <AutoSaveStatusPill status={status} />
     </div>
+  );
+}
+
+/**
+ * Standalone form for the template name. Lives outside TemplateEditor's
+ * main body so its useRef + useAutoSaveForm hooks don't pollute the
+ * parent component, and so the name field follows the same auto-save
+ * pattern as every other editable field on the page.
+ */
+function TemplateNameForm({
+  ns,
+  rowId,
+  defaultName,
+  freshnessKey,
+  run,
+}: {
+  ns: string;
+  rowId: string;
+  defaultName: string;
+  freshnessKey: string;
+  run: (tag: string, action: () => Promise<ActionResult>) => void;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const save = useFormSaveCallback({
+    formRef,
+    tag: `${ns}:name`,
+    run,
+    action: updateTemplateName,
+  });
+  useAutoSaveForm({ formRef, save, freshnessKey });
+
+  return (
+    <form
+      ref={formRef}
+      onSubmit={(e) => e.preventDefault()}
+      data-track-dirty
+      className="surface p-5 space-y-3"
+    >
+      <input type="hidden" name="id" value={rowId} />
+      <div className="flex items-baseline justify-between">
+        <h3 className="heading text-lg">Template name</h3>
+        <span className="muted text-xs">
+          How this template appears in the Agent hub.
+        </span>
+      </div>
+      <input
+        name="name"
+        defaultValue={defaultName}
+        required
+        className="w-full border border-rule rounded px-3 py-2 text-sm font-medium"
+      />
+    </form>
   );
 }
 

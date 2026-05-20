@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { DrivePicker, type DriveFileRef } from "@/components/DrivePicker";
 import type { IntakeAttachment, IntakeConfig } from "@/lib/intake/types";
+import { useAutoSaveForm, useFormSaveCallback } from "./Primitives";
 import type {
   AddFromDriveAction,
   EditorMode,
@@ -28,6 +29,9 @@ type Props = {
   mode: EditorMode;
   intakeConfig: IntakeConfig;
   capBytes: number;
+  /** Row's updated_at — resets the auto-save debounce when a fresh
+   *  server payload replaces defaultValues. */
+  freshnessKey: string;
   actions: IntakeActions;
   /** Template mode only — label for the "reset" target ("ChekhovBot
    *  default" or "blank defaults"). Ignored when mode==='system'. */
@@ -58,6 +62,7 @@ export function IntakeBlock({
   mode,
   intakeConfig,
   capBytes,
+  freshnessKey,
   actions,
   resetTargetLabel,
   run,
@@ -65,6 +70,14 @@ export function IntakeBlock({
 }: Props) {
   const [showPaste, setShowPaste] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const togglesFormRef = useRef<HTMLFormElement>(null);
+  const saveToggles = useFormSaveCallback({
+    formRef: togglesFormRef,
+    tag: `${ns}:intake-toggles`,
+    run,
+    action: actions.updateToggles,
+  });
+  useAutoSaveForm({ formRef: togglesFormRef, save: saveToggles, freshnessKey });
 
   const usedBytes = intakeConfig.attachments.reduce(
     (n, a) => n + (a.byte_size || 0),
@@ -163,9 +176,10 @@ export function IntakeBlock({
         the exemplar response.
       </div>
 
-      {/* Canvas toggles */}
+      {/* Canvas toggles — auto-save on change. */}
       <form
-        action={(fd) => run(`${ns}:intake-toggles`, () => actions.updateToggles(fd))}
+        ref={togglesFormRef}
+        onSubmit={(e) => e.preventDefault()}
         data-track-dirty
         className="space-y-3"
       >
@@ -207,15 +221,6 @@ export function IntakeBlock({
               </p>
             </div>
           </label>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            className="btn bg-maroon text-white px-3 py-1.5 text-sm"
-          >
-            Save toggles
-          </button>
-          <StatusInline status={tagStatus(`${ns}:intake-toggles`)} />
         </div>
       </form>
 

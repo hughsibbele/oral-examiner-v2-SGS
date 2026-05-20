@@ -1,6 +1,12 @@
 "use client";
 
-import { Field, InheritIndicator, SaveRow } from "./Primitives";
+import { useRef } from "react";
+import {
+  Field,
+  InheritIndicator,
+  useAutoSaveForm,
+  useFormSaveCallback,
+} from "./Primitives";
 import {
   type EditorMode,
   type RunAction,
@@ -33,6 +39,7 @@ export function EvaluationBlock(props: {
   overrideMask?: EvaluationOverrideMask;
   resetField?: ServerFormAction;
   ns: string;
+  freshnessKey: string;
   saveAction: ServerFormAction;
   run: RunAction;
   tagStatus: TagStatus;
@@ -45,6 +52,7 @@ export function EvaluationBlock(props: {
     overrideMask,
     resetField,
     ns,
+    freshnessKey,
     saveAction,
     run,
     tagStatus,
@@ -54,9 +62,19 @@ export function EvaluationBlock(props: {
   // template mode, ungraded is the effective value (override OR preset).
   const isUngraded = !values.rubric_body;
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const save = useFormSaveCallback({
+    formRef,
+    tag: `${ns}:eval`,
+    run,
+    action: saveAction,
+  });
+  useAutoSaveForm({ formRef, save, freshnessKey });
+
   return (
     <form
-      action={(fd) => run(`${ns}:eval`, () => saveAction(fd))}
+      ref={formRef}
+      onSubmit={(e) => e.preventDefault()}
       data-track-dirty
       className="surface p-5 space-y-4"
     >
@@ -133,7 +151,7 @@ export function EvaluationBlock(props: {
         )}
       </Field>
 
-      <SaveRow status={tagStatus(`${ns}:eval`)} label="Save evaluation" />
+      {/* Auto-save: status surfaces in the page-level AutoSaveStatusPill. */}
     </form>
   );
 }

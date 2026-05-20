@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { RunAction, ServerFormAction, TagStatus } from "./types";
 
 /**
@@ -266,4 +266,114 @@ export function useDirtyBody(
   }, [bodyRef]);
 
   return dirty;
+}
+
+/**
+ * Auto-save trigger for a single <form> element. Fires `save()` when:
+ * - 1.5s have elapsed since the last keystroke (debounced typing)
+ * - focus leaves the form (blur saves immediately)
+ * - the tab becomes hidden (visibilitychange — covers tab close + switch)
+ *
+ * Caller wires `save` to the underlying server action — typically
+ * `run(tag, () => action(new FormData(formRef.current!)))`. The hook
+ * only fires when `isFormDirty(form)` is true, so consecutive triggers
+ * (e.g. blur right after debounce) collapse to a single save.
+ *
+ * The form's `<form action={...}>` should be unset / replaced with
+ * `onSubmit={(e) => e.preventDefault()}` so Enter inside an input
+ * doesn't double-submit. SaveRow can stay if you want a visible
+ * indicator, but it's typically removed in favour of a page-level
+ * AutoSaveStatusPill.
+ */
+export function useAutoSaveForm({
+  formRef,
+  save,
+  debounceMs = 1500,
+  freshnessKey,
+}: {
+  formRef: React.RefObject<HTMLFormElement | null>;
+  save: () => void;
+  debounceMs?: number;
+  /** Resets the debounce timer when the row's updated_at changes, so a
+   *  fresh defaultValue prop won't trigger a save on its own. */
+  freshnessKey: string;
+}) {
+  // Keep `save` in a ref so re-renders don't churn the listener cleanup.
+  const saveRef = useRef(save);
+  useEffect(() => {
+    saveRef.current = save;
+  }, [save]);
+
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
+    let timer: number | null = null;
+
+    function fire() {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      if (!isFormDirty(form!)) return;
+      saveRef.current();
+    }
+
+    function onInput() {
+      if (!isFormDirty(form!)) return;
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(fire, debounceMs);
+    }
+
+    function onFocusOut(e: FocusEvent) {
+      // Ignore focus moves within the same form — only commit when focus
+      // genuinely leaves the form's subtree.
+      const next = e.relatedTarget as Node | null;
+      if (next && form!.contains(next)) return;
+      fire();
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "hidden") fire();
+    }
+
+    form.addEventListener("input", onInput);
+    form.addEventListener("change", onInput);
+    form.addEventListener("focusout", onFocusOut);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      form.removeEventListener("input", onInput);
+      form.removeEventListener("change", onInput);
+      form.removeEventListener("focusout", onFocusOut);
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+    // freshnessKey is intentionally in the deps — a fresh server payload
+    // resets defaultValues and clears dirty; we want to drop any pending
+    // timer so the next user input restarts cleanly.
+  }, [formRef, debounceMs, freshnessKey]);
+}
+
+/**
+ * Build a stable callback that snapshots the form's current FormData and
+ * runs it through the parent's `run(tag, action)` machinery. Memoized so
+ * the auto-save hook can hold a stable reference.
+ */
+export function useFormSaveCallback({
+  formRef,
+  tag,
+  run,
+  action,
+}: {
+  formRef: React.RefObject<HTMLFormElement | null>;
+  tag: string;
+  run: RunAction;
+  action: ServerFormAction;
+}) {
+  return useCallback(() => {
+    const form = formRef.current;
+    if (!form) return;
+    const fd = new FormData(form);
+    run(tag, () => action(fd));
+  }, [formRef, tag, run, action]);
 }

@@ -1,6 +1,12 @@
 "use client";
 
-import { Field, InheritIndicator, SaveRow } from "./Primitives";
+import { useRef } from "react";
+import {
+  Field,
+  InheritIndicator,
+  useAutoSaveForm,
+  useFormSaveCallback,
+} from "./Primitives";
 import {
   type EditorMode,
   type LiveVoice,
@@ -54,6 +60,9 @@ export function PersonaBlock(props: {
   /** Template mode only: per-field reset action. FormData carries `id` + `field`. */
   resetField?: ServerFormAction;
   ns: string;
+  /** Row's updated_at — resets the auto-save debounce when a fresh
+   *  server payload replaces defaultValues. */
+  freshnessKey: string;
   saveAction: ServerFormAction;
   run: RunAction;
   tagStatus: TagStatus;
@@ -66,14 +75,25 @@ export function PersonaBlock(props: {
     overrideMask,
     resetField,
     ns,
+    freshnessKey,
     saveAction,
     run,
     tagStatus,
   } = props;
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const save = useFormSaveCallback({
+    formRef,
+    tag: `${ns}:persona`,
+    run,
+    action: saveAction,
+  });
+  useAutoSaveForm({ formRef, save, freshnessKey });
+
   return (
     <form
-      action={(fd) => run(`${ns}:persona`, () => saveAction(fd))}
+      ref={formRef}
+      onSubmit={(e) => e.preventDefault()}
       data-track-dirty
       className="surface p-5 space-y-4"
     >
@@ -207,7 +227,9 @@ export function PersonaBlock(props: {
         </Field>
       </div>
 
-      <SaveRow status={tagStatus(`${ns}:persona`)} label="Save persona" />
+      {/* Auto-save: status surfaces in the page-level AutoSaveStatusPill.
+          tagStatus is still threaded to InheritIndicator (reset status)
+          but no per-form SaveRow lives here. */}
     </form>
   );
 }
