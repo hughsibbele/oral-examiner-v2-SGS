@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   listTeachingCourses,
   listCourseAssignments,
-  listCourseStudentEnrollments,
+  listCourseStudentUsers,
   getAssignment,
   updateAssignmentDescription,
   buildExamCardBlock,
@@ -240,15 +240,15 @@ export async function refreshRoster(canvasCourseId: string): Promise<{
     return { ok: false, error: err instanceof Error ? err.message : "Salt missing." };
   }
 
-  let enrollments;
+  let users;
   try {
-    enrollments = await listCourseStudentEnrollments(canvas.config, canvasCourseId);
+    users = await listCourseStudentUsers(canvas.config, canvasCourseId);
   } catch (err) {
     if (err instanceof CanvasError) return { ok: false, error: err.message };
     return { ok: false, error: err instanceof Error ? err.message : "Canvas fetch failed." };
   }
 
-  // Dedupe by canvas user_id; a student in two sections appears twice.
+  // /courses/:id/users is already deduped by Canvas (no section-fanout).
   type Roster = {
     canvas_user_id: string;
     display_name: string;
@@ -257,24 +257,26 @@ export async function refreshRoster(canvasCourseId: string): Promise<{
   };
   const byUser = new Map<string, Roster>();
   let skipped = 0;
-  for (const e of enrollments) {
-    if (!e.user) {
-      skipped++;
-      continue;
-    }
-    const cuid = String(e.user.id);
+  for (const u of users) {
+    const cuid = String(u.id);
     if (byUser.has(cuid)) continue;
-    const email = (e.user.email ?? e.user.login_id ?? "").trim().toLowerCase();
-    if (!email) {
-      // students.email is NOT NULL; can't materialize without an identifier.
+    // Reject anything that isn't actually an email. Canvas can hide
+    // `email` for student users when the token lacks the "View email
+    // addresses" permission; pre-2026-05-20 code fell back to login_id
+    // and stored e.g. "jsmith23" as the email, which never matched the
+    // student's Google-OAuth identity at sign-in. If email is missing,
+    // skip the row and surface the count so the teacher can chase the
+    // Canvas permission rather than getting a silently broken roster.
+    const raw = (u.email ?? u.primary_email ?? "").trim().toLowerCase();
+    if (!raw || !raw.includes("@")) {
       skipped++;
       continue;
     }
     byUser.set(cuid, {
       canvas_user_id: cuid,
-      display_name: e.user.name,
-      email,
-      anon_token: anonToken(cuid, email, salt),
+      display_name: u.name,
+      email: raw,
+      anon_token: anonToken(cuid, raw, salt),
     });
   }
 
