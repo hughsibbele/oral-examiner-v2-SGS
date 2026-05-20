@@ -296,6 +296,9 @@ export type Database = {
           exam_template_id: string | null
           exam_token: string
           personality_preset_id: string | null
+          post_to_canvas_comment: boolean
+          post_to_canvas_submission: boolean
+          post_to_drive: boolean
           teacher_id: string
         }
         Insert: {
@@ -305,6 +308,9 @@ export type Database = {
           exam_template_id?: string | null
           exam_token: string
           personality_preset_id?: string | null
+          post_to_canvas_comment?: boolean
+          post_to_canvas_submission?: boolean
+          post_to_drive?: boolean
           teacher_id: string
         }
         Update: {
@@ -314,6 +320,9 @@ export type Database = {
           exam_template_id?: string | null
           exam_token?: string
           personality_preset_id?: string | null
+          post_to_canvas_comment?: boolean
+          post_to_canvas_submission?: boolean
+          post_to_drive?: boolean
           teacher_id?: string
         }
         Relationships: [

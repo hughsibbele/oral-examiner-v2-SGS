@@ -38,6 +38,10 @@ type BindingRow = {
   exam_template_id: string | null;
   personality_preset_id: string | null;
   exam_token: string;
+  /** M6.18c: persisted destination triple. */
+  post_to_drive: boolean;
+  post_to_canvas_comment: boolean;
+  post_to_canvas_submission: boolean;
 };
 
 type RosterCacheRow = {
@@ -79,7 +83,7 @@ export default async function DashboardPage() {
     supabase
       .from("exam_template_bindings")
       .select(
-        "canvas_assignment_id, exam_template_id, personality_preset_id, exam_token",
+        "canvas_assignment_id, exam_template_id, personality_preset_id, exam_token, post_to_drive, post_to_canvas_comment, post_to_canvas_submission",
       ),
     supabase
       .from("course_rosters")
@@ -125,7 +129,18 @@ export default async function DashboardPage() {
 
   const templateById = new Map(templates.map((t) => [t.id, t]));
   const bindingByAssignment = new Map<string, AgentBindingSummary>();
+  // M6.18c: per-assignment destination state, looked up alongside the
+  // binding so the bulk-actions bar can show what's currently saved.
+  const destinationByAssignment = new Map<
+    string,
+    { drive: boolean; comment: boolean; submission: boolean }
+  >();
   for (const b of bindings) {
+    destinationByAssignment.set(b.canvas_assignment_id, {
+      drive: b.post_to_drive,
+      comment: b.post_to_canvas_comment,
+      submission: b.post_to_canvas_submission,
+    });
     if (b.exam_template_id) {
       const t = templateById.get(b.exam_template_id);
       if (!t) continue;
@@ -193,6 +208,9 @@ export default async function DashboardPage() {
             ),
             binding:
               bindingByAssignment.get(a.canvas_assignment_id) ?? null,
+            destination: destinationByAssignment.get(
+              a.canvas_assignment_id,
+            ) ?? { drive: true, comment: true, submission: false },
           };
         })
         .sort(byDueDateThenName);

@@ -58,6 +58,14 @@ export type AgentBindingSummary =
       exam_token: string;
     };
 
+/** M6.18c: 3-checkbox destination state stored on the binding row.
+ *  Null when no binding exists yet (no card installed). */
+export type DestinationState = {
+  drive: boolean;
+  comment: boolean;
+  submission: boolean;
+};
+
 export type AssignmentWithStatus = AssignmentPayload & {
   canvas_assignment_id: string;
   canvas_course_id: string;
@@ -65,6 +73,10 @@ export type AssignmentWithStatus = AssignmentPayload & {
   cardInstalled: boolean;
   /** Which agent template (default preset OR custom template) is bound. */
   binding: AgentBindingSummary | null;
+  /** Persisted destination triple from the binding row. Falls back to
+   *  M6.18c defaults (Drive ✓ + comment ✓ + submission ✗) when no
+   *  binding exists. */
+  destination: DestinationState;
 };
 
 export type RosterSummary = {

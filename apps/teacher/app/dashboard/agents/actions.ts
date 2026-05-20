@@ -271,10 +271,24 @@ export async function createTemplateForm(formData: FormData): Promise<void> {
 // Bindings: which agent a Canvas assignment uses.
 // =========================================================================
 
+/**
+ * M6.18c: deliverable-destination triple stored on the binding row. The
+ * three flags are independent — any combination including all three is
+ * valid. "Drive only" = drive=true + both Canvas flags false.
+ */
+export type Destination = {
+  drive: boolean;
+  comment: boolean;
+  submission: boolean;
+};
+
 export async function setAssignmentAgent(args: {
   canvasCourseId: string;
   canvasAssignmentId: string;
   agent: { kind: "preset"; id: string } | { kind: "template"; id: string } | null;
+  /** M6.18c: optional destination write. When provided + agent is non-null,
+   *  the three flags get persisted alongside the binding upsert. */
+  destination?: Destination;
 }): Promise<ActionResult> {
   const auth = await getTeacher();
   if (!auth) return { ok: false, error: "Not signed in." };
@@ -386,6 +400,15 @@ export async function setAssignmentAgent(args: {
     .eq("teacher_id", auth.teacher.id)
     .eq("canvas_assignment_id", args.canvasAssignmentId)
     .maybeSingle();
+  // M6.18c destination patch — only included when caller passed it through.
+  const destPatch = args.destination
+    ? {
+        post_to_drive: args.destination.drive,
+        post_to_canvas_comment: args.destination.comment,
+        post_to_canvas_submission: args.destination.submission,
+      }
+    : {};
+
   if (existing) {
     const patch =
       args.agent.kind === "template"
@@ -393,7 +416,7 @@ export async function setAssignmentAgent(args: {
         : { exam_template_id: null, personality_preset_id: args.agent.id };
     const { error } = await admin
       .from("exam_template_bindings")
-      .update({ ...patch, canvas_course_id: args.canvasCourseId })
+      .update({ ...patch, ...destPatch, canvas_course_id: args.canvasCourseId })
       .eq("teacher_id", auth.teacher.id)
       .eq("canvas_assignment_id", args.canvasAssignmentId);
     if (error) return { ok: false, error: error.message };
@@ -409,6 +432,7 @@ export async function setAssignmentAgent(args: {
       canvas_assignment_id: args.canvasAssignmentId,
       exam_token: examToken,
       ...fields,
+      ...destPatch,
     });
     if (error) return { ok: false, error: error.message };
   }
@@ -430,6 +454,9 @@ export async function installCardForAssignment(args: {
   canvasCourseId: string;
   canvasAssignmentId: string;
   agent: { kind: "preset"; id: string } | { kind: "template"; id: string };
+  /** M6.18c: optional destination triple. When omitted, the binding row
+   *  inherits its column defaults (Drive ✓, comment ✓, submission ✗). */
+  destination?: Destination;
 }): Promise<
   | { ok: true; binding: { kind: "preset" | "template"; id: string } }
   | { ok: false; error: string }
@@ -517,11 +544,14 @@ export async function installCardForAssignment(args: {
     };
   }
 
-  // Card is now live in Canvas. Upsert the binding + cache.
+  // Card is now live in Canvas. Upsert the binding + cache. Thread the
+  // destination through so the binding row carries the teacher's intent
+  // (M6.18c).
   const bound = await setAssignmentAgent({
     canvasCourseId: args.canvasCourseId,
     canvasAssignmentId: args.canvasAssignmentId,
     agent: args.agent,
+    destination: args.destination,
   });
   if (!bound.ok) return bound;
 
@@ -640,4 +670,79 @@ export async function deleteTemplate(formData: FormData): Promise<ActionResult> 
   revalidatePath(AGENTS_PATH);
   revalidatePath("/dashboard");
   return { ok: true };
+}
+
+// =========================================================================
+// M6.18c: multi-assignment install / uninstall via the bulk-actions bar.
+// =========================================================================
+
+export type BulkInstallResult = {
+  results: Array<{
+    canvasAssignmentId: string;
+    ok: boolean;
+    message?: string;
+  }>;
+  successCount: number;
+  failureCount: number;
+};
+
+/**
+ * Install the exam card on N assignments with a shared agent + destination.
+ * Loops through `installCardForAssignment` sequentially — Canvas dislikes
+ * burst writes from a single token and per-assignment latency is small.
+ * Returns per-row results so the bar can show which succeeded and which
+ * failed without rolling everything back.
+ */
+export async function bulkInstallExamCards(args: {
+  canvasCourseId: string;
+  canvasAssignmentIds: string[];
+  agent: { kind: "preset"; id: string } | { kind: "template"; id: string };
+  destination: Destination;
+}): Promise<BulkInstallResult> {
+  const results: BulkInstallResult["results"] = [];
+  for (const id of args.canvasAssignmentIds) {
+    const r = await installCardForAssignment({
+      canvasCourseId: args.canvasCourseId,
+      canvasAssignmentId: id,
+      agent: args.agent,
+      destination: args.destination,
+    });
+    if (r.ok) {
+      results.push({ canvasAssignmentId: id, ok: true });
+    } else {
+      results.push({ canvasAssignmentId: id, ok: false, message: r.error });
+    }
+  }
+  return {
+    results,
+    successCount: results.filter((r) => r.ok).length,
+    failureCount: results.filter((r) => !r.ok).length,
+  };
+}
+
+/** Uninstall the exam card from N assignments. Re-uses `setAssignmentAgent`
+ *  with agent=null which strips the card AND the binding (the
+ *  cards-without-agents invariant runs both directions). */
+export async function bulkUninstallExamCards(args: {
+  canvasCourseId: string;
+  canvasAssignmentIds: string[];
+}): Promise<BulkInstallResult> {
+  const results: BulkInstallResult["results"] = [];
+  for (const id of args.canvasAssignmentIds) {
+    const r = await setAssignmentAgent({
+      canvasCourseId: args.canvasCourseId,
+      canvasAssignmentId: id,
+      agent: null,
+    });
+    if (r.ok) {
+      results.push({ canvasAssignmentId: id, ok: true });
+    } else {
+      results.push({ canvasAssignmentId: id, ok: false, message: r.error });
+    }
+  }
+  return {
+    results,
+    successCount: results.filter((r) => r.ok).length,
+    failureCount: results.filter((r) => !r.ok).length,
+  };
 }

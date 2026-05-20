@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { refreshRoster } from "./actions";
 import {
-  installOralExamCard,
-  refreshRoster,
-  uninstallOralExamCard,
-} from "./actions";
-import { InstallWithAgentDialog } from "./InstallWithAgentDialog";
+  bulkInstallExamCards,
+  bulkUninstallExamCards,
+} from "./agents/actions";
 import type {
   AssignmentWithStatus,
   CourseGroup,
@@ -17,25 +16,14 @@ import type {
 } from "./dashboard.types";
 
 /**
- * Single-course accordion. Mirrors AI Documenter's `CourseAccordion` shape
- * with OE-specific affordances:
- *   - Per-assignment Install / Uninstall card button (idempotent splice
- *     into the Canvas assignment description's marker block).
- *   - Per-assignment "Customize →" link to the M2b.5b template editor.
- *   - Per-course "Refresh roster" — OE needs the roster before students
- *     can sign in via /exam/<token>.
+ * Single-course accordion (M6.18c). Multi-select assignments → the
+ * bulk-actions bar carries the agent picker + 3-checkbox destination
+ * picker + Install/Reinstall/Uninstall buttons. Per-row affordances are
+ * read-only badges + a "Edit template →" / "Swap or customize →" link
+ * to the configure page.
  *
  * Open state persists in sessionStorage so revalidatePath remounts don't
  * collapse the accordion the teacher was working in.
- */
-/**
- * Boolean persisted in sessionStorage so the accordion doesn't snap shut on
- * revalidatePath remounts. Reads the saved value on mount; first paint
- * matches SSR (`initial`) then briefly transitions to the saved state.
- *
- * The setState-in-effect is intentional: it's a one-time SSR-deferred read,
- * not a cascading render. The lint rule flags this pattern in general but
- * this is the textbook "read browser-only state after hydration" use case.
  */
 function useSessionFlag(key: string, initial: boolean) {
   const [value, setValue] = useState(initial);
@@ -68,12 +56,29 @@ export function CourseAccordion({
     false,
   );
   const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return assignments;
     return assignments.filter((a) => a.name.toLowerCase().includes(q));
   }, [assignments, search]);
+
+  function toggle(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+  const selectedAssignments = useMemo(
+    () => filtered.filter((a) => selectedIds.has(a.canvas_assignment_id)),
+    [filtered, selectedIds],
+  );
 
   const isInactive = course.workflow_state !== "available";
 
@@ -141,6 +146,18 @@ export function CourseAccordion({
             </div>
           ) : (
             <>
+              {selectedIds.size > 0 && (
+                <div className="border-b border-rule bg-paper px-4 py-3">
+                  <BulkActions
+                    canvasCourseId={course.canvas_course_id}
+                    selectedIds={Array.from(selectedIds)}
+                    selectedAssignments={selectedAssignments}
+                    defaultAgents={defaultAgents}
+                    teacherTemplates={teacherTemplates}
+                    onClearSelection={clearSelection}
+                  />
+                </div>
+              )}
               <div className="flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2">
                 <input
                   type="search"
@@ -167,8 +184,8 @@ export function CourseAccordion({
                       key={a.canvas_assignment_id}
                       assignment={a}
                       canvasCourseId={course.canvas_course_id}
-                      defaultAgents={defaultAgents}
-                      teacherTemplates={teacherTemplates}
+                      checked={selectedIds.has(a.canvas_assignment_id)}
+                      onToggle={() => toggle(a.canvas_assignment_id)}
                     />
                   ))}
                 </ul>
@@ -189,67 +206,44 @@ export function CourseAccordion({
 function AssignmentRow({
   assignment,
   canvasCourseId,
-  defaultAgents,
-  teacherTemplates,
+  checked,
+  onToggle,
 }: {
   assignment: AssignmentWithStatus;
   canvasCourseId: string;
-  defaultAgents: DefaultAgentOption[];
-  teacherTemplates: TeacherTemplateOption[];
+  checked: boolean;
+  onToggle: () => void;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  // No binding yet? Clicking "Install" opens the picker dialog instead of
-  // running install directly — every card must have an agent so students
-  // who click it land somewhere.
-  function onInstall() {
-    if (!assignment.binding) {
-      setDialogOpen(true);
-      return;
-    }
-    runInstall("install");
-  }
-
-  function runInstall(action: "install" | "uninstall") {
-    if (action === "uninstall") {
-      // Uninstall also drops the agent binding (same invariant: card + agent
-      // are paired). Warn explicitly so the teacher isn't surprised.
-      if (
-        !window.confirm(
-          "Uninstall the card? The agent assignment will be removed too — cards and agents are paired.",
-        )
-      )
-        return;
-    }
-    setError(null);
-    startTransition(async () => {
-      const fn = action === "install" ? installOralExamCard : uninstallOralExamCard;
-      const r = await fn({
-        canvasCourseId,
-        canvasAssignmentId: assignment.canvas_assignment_id,
-      });
-      if (r.ok) router.refresh();
-      else setError(r.error);
-    });
-  }
-
   const due = formatDue(assignment.due_at ?? null);
   const installed = assignment.cardInstalled;
   const hubHref = `/dashboard/courses/${canvasCourseId}/assignments/${assignment.canvas_assignment_id}`;
-  // "Manage agent →" link routes by binding kind. Preset bindings have no
-  // editor (defaults are read-only); send the teacher to the assignment
-  // configure page where they can swap or clone-customize. Custom
-  // templates deep-link straight to the editor.
   const editHref =
     assignment.binding?.kind === "template"
       ? `/dashboard/agents/templates/${assignment.binding.template_id}/edit`
       : hubHref;
 
+  const destChars: { char: string; active: boolean; label: string }[] = [
+    { char: "D", active: assignment.destination.drive, label: "Drive doc" },
+    {
+      char: "C",
+      active: assignment.destination.comment,
+      label: "Canvas draft comment",
+    },
+    {
+      char: "S",
+      active: assignment.destination.submission,
+      label: "Canvas submission",
+    },
+  ];
+
   return (
     <li className="flex items-center gap-3 px-4 py-2 hover:bg-paper">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        className="h-4 w-4 shrink-0"
+      />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-ink">
           <Link href={hubHref} className="no-underline text-ink hover:text-maroon">
@@ -282,22 +276,37 @@ function AssignmentRow({
               </Link>
             </>
           )}
+          {assignment.binding && (
+            <span
+              className="ml-2 inline-flex gap-0.5 font-mono text-[10px]"
+              title="D = Drive doc · C = Canvas draft comment · S = Canvas submission"
+            >
+              {destChars.map((d) => (
+                <span
+                  key={d.char}
+                  className={
+                    d.active
+                      ? "rounded bg-maroon/15 px-1 text-maroon"
+                      : "rounded bg-stone-100 px-1 text-stone-400"
+                  }
+                  title={`${d.label}: ${d.active ? "on" : "off"}`}
+                >
+                  {d.char}
+                </span>
+              ))}
+            </span>
+          )}
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
-        <InstallBadge
-          installed={installed}
-          pending={pending}
-          onInstall={onInstall}
-          onUninstall={() => runInstall("uninstall")}
-        />
-        {/* Vary the label per binding kind so the destination matches the
-            CTA. Preset bindings have no editor — the link goes to the
-            assignment configure page where the teacher can swap or
-            clone-customize. Custom-template bindings deep-link to the
-            editor. Only shown once the card's installed (and so a binding
-            exists per the paired invariant). */}
+        {installed ? (
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+            Card installed
+          </span>
+        ) : (
+          <span className="text-[11px] muted">Not installed</span>
+        )}
         {installed && assignment.binding && (
           <Link
             href={editHref}
@@ -309,63 +318,298 @@ function AssignmentRow({
           </Link>
         )}
       </div>
-
-      <InstallWithAgentDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        canvasCourseId={canvasCourseId}
-        canvasAssignmentId={assignment.canvas_assignment_id}
-        defaultAgents={defaultAgents}
-        teacherTemplates={teacherTemplates}
-      />
-
-      {error && (
-        <div className="basis-full text-[11px] text-red-700">
-          {error}
-        </div>
-      )}
     </li>
   );
 }
 
-function InstallBadge({
-  installed,
-  pending,
-  onInstall,
-  onUninstall,
+function BulkActions({
+  canvasCourseId,
+  selectedIds,
+  selectedAssignments,
+  defaultAgents,
+  teacherTemplates,
+  onClearSelection,
 }: {
-  installed: boolean;
-  pending: boolean;
-  onInstall: () => void;
-  onUninstall: () => void;
+  canvasCourseId: string;
+  selectedIds: string[];
+  selectedAssignments: AssignmentWithStatus[];
+  defaultAgents: DefaultAgentOption[];
+  teacherTemplates: TeacherTemplateOption[];
+  onClearSelection: () => void;
 }) {
-  if (installed) {
-    return (
-      <span className="inline-flex items-baseline gap-1.5">
-        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
-          Card installed
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  // Initial agent pick: if every selected row already has the same binding,
+  // start with that. Otherwise default to the first system preset.
+  const initialAgent = useMemo<
+    { kind: "preset"; id: string } | { kind: "template"; id: string }
+  >(() => {
+    const bindings = selectedAssignments
+      .map((a) => a.binding)
+      .filter((b): b is NonNullable<typeof b> => b !== null);
+    if (bindings.length === selectedAssignments.length && bindings.length > 0) {
+      const first = bindings[0]!;
+      const allSame = bindings.every((b) =>
+        b.kind === first.kind &&
+        (b.kind === "preset"
+          ? (first as typeof b).preset_id === b.preset_id
+          : (first as typeof b).template_id === b.template_id),
+      );
+      if (allSame) {
+        return first.kind === "preset"
+          ? { kind: "preset", id: first.preset_id }
+          : { kind: "template", id: first.template_id };
+      }
+    }
+    return defaultAgents[0]
+      ? { kind: "preset", id: defaultAgents[0].id }
+      : teacherTemplates[0]
+        ? { kind: "template", id: teacherTemplates[0].id }
+        : { kind: "preset", id: "" };
+  }, [selectedAssignments, defaultAgents, teacherTemplates]);
+
+  const [agent, setAgent] = useState(initialAgent);
+  const agentKey =
+    agent.kind === "preset" ? `preset:${agent.id}` : `template:${agent.id}`;
+
+  // Initial destination: take the first selected row's persisted state, or
+  // the M6.18c defaults (Drive ✓ + comment ✓ + submission ✗).
+  const first = selectedAssignments[0];
+  const [postToDrive, setPostToDrive] = useState(first?.destination.drive ?? true);
+  const [postToComment, setPostToComment] = useState(
+    first?.destination.comment ?? true,
+  );
+  const [postToSubmission, setPostToSubmission] = useState(
+    first?.destination.submission ?? false,
+  );
+
+  const someInstalled = selectedAssignments.some((a) => a.cardInstalled);
+
+  function run(op: "install" | "uninstall") {
+    setError(null);
+    startTransition(async () => {
+      if (op === "uninstall") {
+        if (
+          !window.confirm(
+            `Uninstall the card from ${selectedIds.length} assignment${selectedIds.length === 1 ? "" : "s"}? The agent binding gets pulled too — cards and agents are paired.`,
+          )
+        )
+          return;
+        const r = await bulkUninstallExamCards({
+          canvasCourseId,
+          canvasAssignmentIds: selectedIds,
+        });
+        if (r.failureCount === 0) onClearSelection();
+        else
+          setError(
+            `${r.successCount} succeeded, ${r.failureCount} failed${firstError(r.results)}`,
+          );
+        router.refresh();
+        return;
+      }
+
+      if (!agent.id) {
+        setError("Pick an agent.");
+        return;
+      }
+      const r = await bulkInstallExamCards({
+        canvasCourseId,
+        canvasAssignmentIds: selectedIds,
+        agent,
+        destination: {
+          drive: postToDrive,
+          comment: postToComment,
+          submission: postToSubmission,
+        },
+      });
+      if (r.failureCount === 0) onClearSelection();
+      else
+        setError(
+          `${r.successCount} succeeded, ${r.failureCount} failed${firstError(r.results)}`,
+        );
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-2 text-[11px]">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="font-semibold text-ink">
+          {selectedIds.length} selected
         </span>
+
+        <label className="inline-flex items-center gap-1.5 text-ink">
+          <span className="text-[11px] uppercase tracking-wide muted">Agent</span>
+          <select
+            value={agentKey}
+            onChange={(e) => {
+              const [kind, id] = e.target.value.split(":") as [
+                "preset" | "template",
+                string,
+              ];
+              setAgent({ kind, id });
+            }}
+            disabled={pending}
+            className="rounded border border-rule bg-white px-2 py-1 text-xs"
+          >
+            {defaultAgents.length > 0 && (
+              <optgroup label="Default agents">
+                {defaultAgents.map((d) => (
+                  <option key={`preset:${d.id}`} value={`preset:${d.id}`}>
+                    Default {d.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {teacherTemplates.length > 0 && (
+              <optgroup label="Your custom templates">
+                {teacherTemplates.map((t) => (
+                  <option key={`template:${t.id}`} value={`template:${t.id}`}>
+                    {t.name}
+                    {t.presetName ? ` (based on ${t.presetName})` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </label>
+
+        <fieldset className="inline-flex items-center gap-3 text-ink">
+          <legend className="text-[11px] uppercase tracking-wide muted">
+            Exam artifacts submitted to:
+          </legend>
+          <DestinationCheckbox
+            label="Drive"
+            checked={postToDrive}
+            onChange={setPostToDrive}
+            disabled={pending}
+            title="Save the transcript + summary + evaluation to a Google Doc in your Drive. Writer ships with M7.4."
+          />
+          <DestinationCheckbox
+            label="Canvas as draft comment"
+            checked={postToComment}
+            onChange={setPostToComment}
+            disabled={pending}
+            title="Post a draft comment in SpeedGrader containing the eval + summary + Drive doc link."
+          />
+          <DestinationCheckbox
+            label="Canvas as submission"
+            checked={postToSubmission}
+            onChange={setPostToSubmission}
+            disabled={pending}
+            title="Post the artifacts as the student's submission body. Rare for orals — opt-in only."
+          />
+        </fieldset>
+
         <button
           type="button"
-          onClick={onUninstall}
+          onClick={onClearSelection}
           disabled={pending}
-          className="text-[10px] muted underline disabled:no-underline"
+          className="rounded px-2 py-1 muted hover:bg-stone-100 disabled:opacity-50"
         >
-          {pending ? "Removing…" : "uninstall"}
+          Cancel
         </button>
-      </span>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onInstall}
-      disabled={pending}
-      className="rounded border border-rule bg-white px-2.5 py-1 text-[11px] text-ink hover:border-maroon hover:text-maroon disabled:opacity-50"
-    >
-      {pending ? "Installing…" : "Install card"}
-    </button>
+        {someInstalled && (
+          <button
+            type="button"
+            onClick={() => run("uninstall")}
+            disabled={pending}
+            className="rounded border border-rule px-3 py-1 font-semibold text-ink hover:bg-stone-100 disabled:opacity-50"
+          >
+            {pending ? "Working…" : "Uninstall"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => run("install")}
+          disabled={
+            pending ||
+            !agent.id ||
+            (!postToDrive && !postToComment && !postToSubmission)
+          }
+          className="rounded bg-maroon px-3 py-1 font-semibold text-white hover:bg-maroon/90 disabled:opacity-50"
+          title={
+            !postToDrive && !postToComment && !postToSubmission
+              ? "Pick at least one destination."
+              : undefined
+          }
+        >
+          {pending
+            ? "Installing…"
+            : someInstalled
+              ? "Reinstall"
+              : "Install card"}
+        </button>
+      </div>
+
+      <p className="italic muted">
+        {describeDestination({
+          drive: postToDrive,
+          comment: postToComment,
+          submission: postToSubmission,
+        })}
+      </p>
+
+      {error && <p className="text-red-700">{error}</p>}
+    </div>
   );
+}
+
+function DestinationCheckbox({
+  label,
+  checked,
+  onChange,
+  disabled,
+  title,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled: boolean;
+  title: string;
+}) {
+  return (
+    <label className="inline-flex items-center gap-1.5" title={title}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+        className="h-3.5 w-3.5 rounded border-rule accent-maroon disabled:opacity-50"
+      />
+      <span className="text-xs">{label}</span>
+    </label>
+  );
+}
+
+function describeDestination(d: {
+  drive: boolean;
+  comment: boolean;
+  submission: boolean;
+}): string {
+  const targets: string[] = [];
+  if (d.drive) targets.push("a Google Doc in your Drive folder");
+  if (d.comment) targets.push("a Canvas draft comment");
+  if (d.submission) targets.push("the student's Canvas submission body");
+  if (targets.length === 0) {
+    return "Nothing checked — artifacts won't be saved anywhere. Pick at least one destination.";
+  }
+  if (targets.length === 1) {
+    return `Exam artifacts will be saved to ${targets[0]}.`;
+  }
+  if (targets.length === 2) {
+    return `Exam artifacts will be saved to ${targets[0]} and ${targets[1]}.`;
+  }
+  return `Exam artifacts will be saved to ${targets[0]}, ${targets[1]}, and ${targets[2]}.`;
+}
+
+function firstError(
+  results: { ok: boolean; message?: string }[],
+): string {
+  const failure = results.find((r) => !r.ok);
+  return failure?.message ? ` — first error: ${failure.message}` : "";
 }
 
 function RosterFooter({
@@ -444,5 +688,5 @@ function Chevron({ open }: { open: boolean }) {
 function formatDue(due: string | null): string {
   if (!due) return "No due date";
   const d = new Date(due);
-  return `Due ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+  return `Due ${d.toLocaleDateString()}`;
 }
