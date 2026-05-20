@@ -288,7 +288,7 @@ export function useDirtyBody(
 export function useAutoSaveForm({
   formRef,
   save,
-  debounceMs = 1500,
+  debounceMs = 800,
   freshnessKey,
 }: {
   formRef: React.RefObject<HTMLFormElement | null>;
