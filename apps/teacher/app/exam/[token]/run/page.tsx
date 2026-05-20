@@ -1,13 +1,21 @@
 import { redirect } from "next/navigation";
 import { BrandHeader } from "@/components/BrandHeader";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { resolveExamContext } from "@/lib/exam/resolve";
+import { resolveExamContext, type ResolvedAgent } from "@/lib/exam/resolve";
 import { findActivePriorSession } from "@/lib/exam/session";
+import { StudentLiveSession } from "./StudentLiveSession";
 
 /**
- * M2b.5d placeholder — the live-voice screen. For now: re-checks auth +
- * session existence, then renders a "coming soon" stub so the redirect
- * from startExam lands somewhere coherent.
+ * M2b.5d.2 — student live voice exam page. Server component validates
+ * everything, then hands off to the StudentLiveSession client.
+ *
+ * State routing:
+ *   - no auth          → /login
+ *   - no resolution    → /exam/<aid> (re-renders the appropriate error screen)
+ *   - no prior session → /exam/<aid> (ready screen — student hasn't clicked Start)
+ *   - completed/failed → /exam/<aid> (block screen)
+ *   - in_progress      → "session disconnected" (Live API can't resume context)
+ *   - started          → render the live session
  */
 export default async function ExamRunPage({
   params,
@@ -37,22 +45,55 @@ export default async function ExamRunPage({
     canvasAssignmentId,
     studentId: resolution.student.id,
   });
-  if (!prior || (prior.state !== "started" && prior.state !== "in_progress")) {
+  if (!prior) {
     redirect(`/exam/${canvasAssignmentId}`);
   }
+  if (prior.state === "completed" || prior.state === "failed") {
+    redirect(`/exam/${canvasAssignmentId}`);
+  }
+  if (prior.state === "in_progress") {
+    return <DisconnectedScreen />;
+  }
+
+  // state === 'started' — the page handler at /exam/<aid> inserted the
+  // row, redirected here, and the client is about to mint an ephemeral
+  // token + connect.
+
+  const agentName = nameForAgent(resolution.agent);
 
   return (
     <>
       <BrandHeader eyebrow="Episcopal High School" title="Oral Defense" />
+      <main className="max-w-2xl mx-auto px-6 py-8 space-y-4">
+        <StudentLiveSession
+          examSessionId={prior.id}
+          agentName={agentName}
+        />
+      </main>
+    </>
+  );
+}
+
+function nameForAgent(agent: ResolvedAgent): string {
+  if (agent.kind === "preset") return agent.preset.name;
+  return agent.template.name || agent.preset?.name || "your examiner";
+}
+
+function DisconnectedScreen() {
+  return (
+    <>
+      <BrandHeader eyebrow="Episcopal High School" title="Oral Defense" />
       <main className="max-w-2xl mx-auto px-6 py-12 space-y-3">
-        <h1 className="heading text-2xl">Live session — coming soon</h1>
+        <h1 className="heading text-2xl">Session disconnected</h1>
         <p className="text-sm leading-relaxed">
-          The live voice interface ships in M2b.5d. Your session row is
-          created and waiting (id <code>{prior.id}</code>, state{" "}
-          <code>{prior.state}</code>).
+          It looks like you started your exam and got disconnected — maybe a
+          lost connection or a closed tab. The conversation can&apos;t pick
+          up from where it left off, so this attempt is stuck.
         </p>
-        <p className="muted text-xs">
-          When 5d lands, this page renders the live voice UI.
+        <p className="text-sm leading-relaxed">
+          Email your teacher and ask them to reset your session — they can
+          do that from their dashboard. Once they have, this link will let
+          you start fresh.
         </p>
       </main>
     </>

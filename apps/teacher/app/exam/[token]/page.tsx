@@ -195,6 +195,12 @@ function CompletionBlockedScreen({
 }: {
   completedAt: string | null;
 }) {
+  // M2b.5d.5 — one screen for both entry conditions: just-submitted (the
+  // /run page redirects here after endExamSession) AND revisit-after
+  // (student re-opens /exam/<aid> after a previous attempt). We
+  // intentionally don't differentiate by freshness — the messaging is the
+  // same either way, and a fresh student doesn't need to know they're
+  // looking at a "blocker" screen.
   const when = completedAt
     ? new Date(completedAt).toLocaleString("en-US", {
         dateStyle: "long",
@@ -205,16 +211,21 @@ function CompletionBlockedScreen({
     <>
       <BrandHeader eyebrow="Episcopal High School" title="Oral Defense" />
       <main className="max-w-2xl mx-auto px-6 py-12 space-y-3">
-        <h1 className="heading text-2xl">You&apos;ve already taken this exam</h1>
+        <h1 className="heading text-2xl">Your oral defense is submitted</h1>
         {when && (
           <p className="text-sm leading-relaxed">
-            Your session was completed on <strong>{when}</strong>. Your
-            teacher has your transcript and evaluation.
+            Completed on <strong>{when}</strong>.
           </p>
         )}
         <p className="text-sm leading-relaxed">
-          If you need to retake it (technical problem, mic failure, etc.),
-          email your teacher — they can reset it for you.
+          Your teacher will see your transcript and an AI-generated
+          evaluation when they grade. They&apos;ll write back via Canvas as
+          usual.
+        </p>
+        <p className="text-sm leading-relaxed">
+          If something went wrong (technical issue, mic failure, etc.),
+          email your teacher and they can reset your session so you can try
+          again.
         </p>
       </main>
     </>
