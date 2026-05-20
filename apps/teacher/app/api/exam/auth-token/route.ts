@@ -22,6 +22,8 @@ import {
   composeIntakePack,
   parseIntakeConfig,
 } from "@/lib/intake/types";
+import { getCanvasConfigByTeacherId } from "@/lib/canvas/server";
+import { getSubmission } from "@oral-examiner/canvas";
 import type { SelectedQuestion } from "@/lib/runtime/select-questions";
 import type { Database } from "@oral-examiner/db";
 
@@ -104,7 +106,7 @@ export async function POST(req: Request) {
   // student's session id.
   const { data: studentRow, error: studentErr } = await admin
     .from("students")
-    .select("id, email")
+    .select("id, email, canvas_user_id")
     .eq("id", session.student_id)
     .maybeSingle();
   if (studentErr || !studentRow) {
@@ -234,27 +236,63 @@ export async function POST(req: Request) {
     (session.selected_questions as SelectedQuestion[] | null) ?? [];
 
   // Intake context. canvas_description comes from the per-teacher
-  // canvas_assignment_cache.payload (the only durable copy without re-hitting
-  // Canvas). canvas_submission_body is intentionally NOT fetched in v1 —
-  // doing so requires a getSubmission method on @oral-examiner/canvas + the
-  // teacher's decrypted Canvas token at student-request time. Without it
-  // intake_config.use_canvas_submission silently no-ops; the agent still
-  // works, just with less context. Track as a 5d.1 follow-up.
+  // canvas_assignment_cache.payload (no need to re-hit Canvas — the cache is
+  // refreshed when the teacher syncs). canvas_submission_body fetches live
+  // from Canvas using the binding-teacher's decrypted token, because the
+  // student edits this between sync passes. Both paths fail open: a missing
+  // cache row, decrypt failure, or Canvas hiccup just drops that section
+  // from the intake pack rather than blocking the exam.
   let canvasDescription: string | null = null;
-  if (intakeConfig.use_canvas_description && teacherId) {
+  let canvasCourseId: string | null = null;
+  if (
+    teacherId &&
+    (intakeConfig.use_canvas_description || intakeConfig.use_canvas_submission)
+  ) {
     const { data: cache } = await admin
       .from("canvas_assignment_cache")
-      .select("payload")
+      .select("canvas_course_id, payload")
       .eq("teacher_id", teacherId)
       .eq("canvas_assignment_id", session.canvas_assignment_id)
       .maybeSingle();
-    const payload = cache?.payload as { description?: string | null } | null;
-    canvasDescription = payload?.description ?? null;
+    canvasCourseId = (cache?.canvas_course_id as string | null) ?? null;
+    if (intakeConfig.use_canvas_description) {
+      const payload = cache?.payload as { description?: string | null } | null;
+      canvasDescription = payload?.description ?? null;
+    }
+  }
+
+  let canvasSubmissionBody: string | null = null;
+  if (
+    intakeConfig.use_canvas_submission &&
+    teacherId &&
+    canvasCourseId &&
+    studentRow.canvas_user_id
+  ) {
+    try {
+      const canvasConfig = await getCanvasConfigByTeacherId(teacherId);
+      if (canvasConfig) {
+        const submission = await getSubmission(
+          canvasConfig,
+          canvasCourseId,
+          session.canvas_assignment_id,
+          studentRow.canvas_user_id,
+        );
+        canvasSubmissionBody = submission.body ?? null;
+      }
+    } catch (err) {
+      // Fail open — agent loses context but the exam still runs. Log to
+      // server console so a misconfig (revoked token, wrong host) is
+      // visible without students seeing a cryptic error.
+      console.error(
+        `[exam/auth-token] Canvas submission fetch failed for session=${session.id}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
   const intakePack = composeIntakePack(intakeConfig, {
     canvas_description: canvasDescription,
-    canvas_submission_body: null,
+    canvas_submission_body: canvasSubmissionBody,
   });
 
   const systemPrompt = assembleSystemPrompt({

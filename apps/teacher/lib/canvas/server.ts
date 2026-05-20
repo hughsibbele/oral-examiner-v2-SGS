@@ -31,6 +31,33 @@ export async function getCanvasConfigForTeacher(): Promise<{
 }
 
 /**
+ * Resolve a CanvasConfig for a teacher by id, bypassing auth context.
+ * Used in student-context routes (e.g. /api/exam/auth-token) where the
+ * signed-in user is the student but we need to act as the binding's
+ * teacher to fetch a student's submission. Returns null on missing
+ * config or decryption failure — caller should treat as "no Canvas
+ * context available" and fail open.
+ */
+export async function getCanvasConfigByTeacherId(
+  teacherId: string,
+): Promise<CanvasConfig | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("teachers")
+    .select("canvas_host, canvas_token_encrypted")
+    .eq("id", teacherId)
+    .maybeSingle();
+  if (error || !data) return null;
+  if (!data.canvas_host || !data.canvas_token_encrypted) return null;
+  try {
+    const token = decryptSecret(data.canvas_token_encrypted, readKeyFromEnv());
+    return { host: data.canvas_host, token };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Defense-in-depth check (M2b.5b.11.a). Returns null when this teacher
  * has a cached assignment row for the given Canvas IDs, indicating the
  * assignment is in a course they teach. Otherwise returns a user-friendly

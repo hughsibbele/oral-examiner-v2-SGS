@@ -82,6 +82,17 @@ export type CanvasEnrollment = {
   user?: CanvasEnrollmentUser;
 };
 
+export type CanvasSubmission = {
+  id: number;
+  user_id: number;
+  assignment_id: number;
+  workflow_state: string;
+  submission_type?: string | null;
+  body?: string | null;
+  url?: string | null;
+  submitted_at?: string | null;
+};
+
 export class CanvasError extends Error {
   constructor(
     message: string,
@@ -265,6 +276,35 @@ export async function updateAssignmentDescription(
     );
   }
   return (await res.json()) as CanvasAssignment;
+}
+
+/**
+ * Fetch a single student's submission for an assignment. Used at exam-start
+ * time when the agent's intake config opts in to `use_canvas_submission`:
+ * the auth-token route fetches this, drops `body` into the intake pack, and
+ * Gemini sees the student's essay alongside the assignment description.
+ *
+ * `submission_type='online_text_entry'` is the case we care about — `body`
+ * is the rendered HTML. For other types (file upload, url, none yet) `body`
+ * will be empty/null and the caller no-ops gracefully.
+ */
+export async function getSubmission(
+  config: CanvasConfig,
+  canvasCourseId: string | number,
+  canvasAssignmentId: string | number,
+  canvasUserId: string | number,
+): Promise<CanvasSubmission> {
+  const path = `/courses/${canvasCourseId}/assignments/${canvasAssignmentId}/submissions/${canvasUserId}`;
+  const res = await canvasFetch(config, path);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new CanvasError(
+      `Canvas GET submission returned ${res.status}.`,
+      res.status,
+      body,
+    );
+  }
+  return (await res.json()) as CanvasSubmission;
 }
 
 /**
