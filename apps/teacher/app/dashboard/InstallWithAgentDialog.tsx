@@ -56,6 +56,14 @@ export function InstallWithAgentDialog({
       : null;
   const [pick, setPick] = useState<Pick>(initialPick);
 
+  // Radio inputs with the same `name=` are a single exclusion group across
+  // the whole page, even when in separate <dialog> elements. Every assignment
+  // row renders its own copy of this dialog, so without per-instance naming
+  // the React controlled-checked state fights the browser's native
+  // exclusion behavior on click and the radios appear unselectable. Suffix
+  // with the assignment id so each dialog's group is isolated.
+  const radioGroup = `agent-${canvasAssignmentId}`;
+
   // Show/close native <dialog> via showModal / close so we get the
   // backdrop + Esc-to-close for free.
   useEffect(() => {
@@ -161,7 +169,7 @@ export function InstallWithAgentDialog({
                   >
                     <input
                       type="radio"
-                      name="agent"
+                      name={radioGroup}
                       checked={pick?.kind === "preset" && pick.id === a.id}
                       onChange={() => setPick({ kind: "preset", id: a.id })}
                       className="mt-1"
@@ -187,7 +195,7 @@ export function InstallWithAgentDialog({
                   >
                     <input
                       type="radio"
-                      name="agent"
+                      name={radioGroup}
                       checked={pick?.kind === "template" && pick.id === t.id}
                       onChange={() => setPick({ kind: "template", id: t.id })}
                       className="mt-1"
