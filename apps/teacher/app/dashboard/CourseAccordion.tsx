@@ -374,15 +374,22 @@ function BulkActions({
   const agentKey =
     agent.kind === "preset" ? `preset:${agent.id}` : `template:${agent.id}`;
 
-  // Initial destination: take the first selected row's persisted state, or
-  // the M6.18c defaults (Drive ✓ + comment ✓ + submission ✗).
+  // Initial destination: honor the first selected row's persisted state
+  // ONLY when that row has actually been installed before — otherwise show
+  // the M6.18c defaults (Drive ✓ + comment ✓ + submission ✗). For OE the
+  // binding cascades on uninstall, so a row with `cardInstalled=false` has
+  // no binding and `destination` is the column defaults — falling through
+  // to defaults gives the right initial state.
   const first = selectedAssignments[0];
-  const [postToDrive, setPostToDrive] = useState(first?.destination.drive ?? true);
+  const useSaved = first?.cardInstalled ?? false;
+  const [postToDrive, setPostToDrive] = useState(
+    useSaved ? first?.destination.drive ?? true : true,
+  );
   const [postToComment, setPostToComment] = useState(
-    first?.destination.comment ?? true,
+    useSaved ? first?.destination.comment ?? true : true,
   );
   const [postToSubmission, setPostToSubmission] = useState(
-    first?.destination.submission ?? false,
+    useSaved ? first?.destination.submission ?? false : false,
   );
 
   const someInstalled = selectedAssignments.some((a) => a.cardInstalled);
