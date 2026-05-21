@@ -127,10 +127,15 @@ export async function flushTranscript(
   }
   const trimmed = entries.slice(-MAX_TRANSCRIPT_ENTRIES);
   const scrubbed = scrubTranscriptEntries(trimmed, roster);
+  // Phase 2 state fence: don't overwrite the transcript on a row that
+  // already moved past in_progress (e.g., a 10s flush firing after End-
+  // exam committed the final scrubbed payload — would clobber the final
+  // state with intermediate data). Treat zero rows as a no-op success.
   const { error } = await admin
     .from("exam_sessions")
     .update({ transcript: scrubbed as unknown as Json })
-    .eq("id", examSessionId);
+    .eq("id", examSessionId)
+    .in("state", ["started", "in_progress"]);
   if (error) return { error: error.message };
   return { ok: true };
 }
@@ -189,7 +194,14 @@ export async function endExamSession(
   const actualMinutes = Math.max(1, Math.ceil(durationSec / 60));
   const unusedMinutes = Math.max(0, reservedMinutes - actualMinutes);
 
-  const { error: updateErr } = await admin
+  // Phase 2 state fence: only complete the row if it's still in a state
+  // that can move to 'completed'. The `.select("id")` makes Supabase
+  // return the affected rows so we can detect a no-op (which means
+  // someone — a double-click, a visibilitychange handler, a network
+  // retry — already finished this session). When rows-affected = 0,
+  // skip the refund + Inngest send (we'd double-count both) and just
+  // redirect to the same completion screen the prior call landed on.
+  const { data: updatedRows, error: updateErr } = await admin
     .from("exam_sessions")
     .update({
       state: "completed",
@@ -198,8 +210,18 @@ export async function endExamSession(
       transcript: scrubbed as unknown as Json,
       audio_url: audioPath,
     })
-    .eq("id", examSessionId);
+    .eq("id", examSessionId)
+    .in("state", ["started", "in_progress"])
+    .select("id");
   if (updateErr) return { error: `endExamSession: ${updateErr.message}` };
+
+  const didCompleteHere = (updatedRows?.length ?? 0) > 0;
+  if (!didCompleteHere) {
+    console.warn(
+      `[endExamSession] no_op session=${examSessionId} guard.state=${guard.state} — row was already past in_progress; skipping refund + Inngest send`,
+    );
+    redirect(`/exam/${guard.canvasAssignmentId}`);
+  }
 
   if (unusedMinutes > 0) {
     // Best-effort. A refund failure shouldn't block the session

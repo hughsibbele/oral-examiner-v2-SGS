@@ -322,14 +322,35 @@ export async function POST(req: Request) {
     ),
   );
 
-  const { error: reserveErr } = await admin
+  // Phase 2 idempotent reservation: gate the UPDATE on state='started'
+  // AND live_minutes_used=0 so a double-click on Start (or a network
+  // retry) can't mint two billable Gemini tokens. The first call wins;
+  // the second sees zero rows-affected and returns 409. If a token mint
+  // later fails, the catch block below rolls back live_minutes_used to 0
+  // so the student can retry. Sessions wedged at live_minutes_used > 0
+  // (tab closed before audio connected, no markInProgress flip) are
+  // recovered by the Phase 3 stale-session sweep — until that ships,
+  // the teacher reset affordance is the manual escape hatch.
+  const { data: reservedRows, error: reserveErr } = await admin
     .from("exam_sessions")
     .update({ live_minutes_used: reservedMinutes })
-    .eq("id", session.id);
+    .eq("id", session.id)
+    .eq("state", "started")
+    .eq("live_minutes_used", 0)
+    .select("id");
   if (reserveErr) {
     return NextResponse.json(
       { error: `Reservation failed: ${reserveErr.message}` },
       { status: 500 },
+    );
+  }
+  if (!reservedRows || reservedRows.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "A token was already issued for this session, or the session has already started. Ask your teacher to reset the session if you need a fresh start.",
+      },
+      { status: 409 },
     );
   }
 

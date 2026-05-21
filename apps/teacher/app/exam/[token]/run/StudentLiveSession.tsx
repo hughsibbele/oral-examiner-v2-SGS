@@ -391,11 +391,21 @@ export function StudentLiveSession({
     // Flip state='started' → 'in_progress' so a tab-refresh or crash from
     // here on routes through the "disconnected" screen rather than letting
     // the student re-enter and burn a second token.
+    //
+    // Phase 2: await + log on error instead of fire-and-forget. We don't
+    // kill the session on failure — the student is already mid-conversation
+    // with the agent and the Phase 2 reservation gate (`live_minutes_used =
+    // 0` in /api/exam/auth-token) prevents a refresh from minting a second
+    // token even if the state stays at 'started'. The failure is a
+    // diagnostic signal, not a UX-blocking event.
     if (!inProgressMarkedRef.current) {
       inProgressMarkedRef.current = true;
-      markInProgress(examSessionId).catch(() => {
-        /* best-effort; the row guard will catch any client-side abuse */
-      });
+      const markResult = await markInProgress(examSessionId);
+      if ("error" in markResult) {
+        console.warn(
+          `[StudentLiveSession] markInProgress failed session=${examSessionId} err=${markResult.error}`,
+        );
+      }
     }
 
     void acquireWakeLock();
@@ -557,6 +567,16 @@ export function StudentLiveSession({
       return;
     }
     setStatus({ kind: "stopping" });
+
+    // Phase 2: clear the 10s flush interval synchronously, BEFORE awaiting
+    // the recorder assembly. Otherwise a flush firing during the recorder
+    // stop-and-assemble window can race the final endExamSession write
+    // (server-side state fence catches it as a no-op, but no point even
+    // racing — clear here.)
+    if (flushTimerRef.current) {
+      clearInterval(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
 
     const startedAt = sessionStartedAtRef.current;
     const durationSec =
