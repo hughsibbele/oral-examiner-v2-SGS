@@ -315,9 +315,11 @@ export async function POST(req: Request) {
     selectedQuestions.length,
     followUpDepth,
   );
-  const reservedMinutes = Math.min(
-    HARD_MAX_MINUTES,
-    Math.max(estDuration + TOKEN_BUFFER_MIN, MIN_RESERVATION_MIN),
+  const reservedMinutes = Math.ceil(
+    Math.min(
+      HARD_MAX_MINUTES,
+      Math.max(estDuration + TOKEN_BUFFER_MIN, MIN_RESERVATION_MIN),
+    ),
   );
 
   const { error: reserveErr } = await admin
