@@ -7,8 +7,9 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest/client";
 import { evaluateExam } from "@/lib/inngest/evaluate-exam";
+import { sweepStaleExamSessions } from "@/lib/inngest/sweep-stale-sessions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [evaluateExam],
+  functions: [evaluateExam, sweepStaleExamSessions],
 });

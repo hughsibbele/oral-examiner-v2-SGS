@@ -6,6 +6,8 @@ import { resolveExamContext, type ResolvedAgent } from "@/lib/exam/resolve";
 import {
   classifyPriorSession,
   findActivePriorSession,
+  isStaleLiveSession,
+  refundAndArchiveSession,
 } from "@/lib/exam/session";
 import {
   estimateDurationMin,
@@ -48,10 +50,22 @@ export default async function ExamPage({
 
   const { student, agent, assignmentTitle } = resolution;
 
-  const prior = await findActivePriorSession({
+  let prior = await findActivePriorSession({
     canvasAssignmentId,
     studentId: student.id,
   });
+
+  // REMEDIATION_PLAN Phase 3: if the prior row is a wedged live session
+  // past the grace window, archive + refund it now so the student gets
+  // the ready screen instead of being trapped at /run's disconnected
+  // screen. Mirrors the sweep-stale-exam-sessions Inngest cron; we run
+  // it inline here so the student doesn't have to wait for the next
+  // cron tick.
+  if (isStaleLiveSession(prior)) {
+    await refundAndArchiveSession(prior!.id, "abandoned_resume");
+    prior = null;
+  }
+
   const verdict = classifyPriorSession(prior);
 
   if (verdict === "completion_blocked" && prior) {

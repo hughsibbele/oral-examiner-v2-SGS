@@ -2,7 +2,11 @@ import { redirect } from "next/navigation";
 import { BrandHeader } from "@/components/BrandHeader";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { resolveExamContext, type ResolvedAgent } from "@/lib/exam/resolve";
-import { findActivePriorSession } from "@/lib/exam/session";
+import {
+  findActivePriorSession,
+  isStaleLiveSession,
+  refundAndArchiveSession,
+} from "@/lib/exam/session";
 import { StudentLiveSession } from "./StudentLiveSession";
 
 /**
@@ -49,6 +53,14 @@ export default async function ExamRunPage({
     redirect(`/exam/${canvasAssignmentId}`);
   }
   if (prior.state === "completed" || prior.state === "failed") {
+    redirect(`/exam/${canvasAssignmentId}`);
+  }
+  // REMEDIATION_PLAN Phase 3: a stale started/in_progress row gets
+  // archived + refunded here too, then bounce back to the ready screen
+  // so the student can start fresh. The page handler at /exam/[id] does
+  // the same check; this is belt-and-braces for direct /run hits.
+  if (isStaleLiveSession(prior)) {
+    await refundAndArchiveSession(prior.id, "abandoned_resume");
     redirect(`/exam/${canvasAssignmentId}`);
   }
   if (prior.state === "in_progress") {
