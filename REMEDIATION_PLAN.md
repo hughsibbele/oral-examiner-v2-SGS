@@ -4,6 +4,25 @@ Strategic plan to address the structural bugs surfaced by the 2026-05-21 multi-a
 
 The audits identified five recurring root causes. Almost every individual bug maps to one of them. Patching point-by-point would leave the patterns intact; the same shape of bug would re-appear in the next feature. This plan groups fixes by structural theme so each phase eliminates a *class* of bugs.
 
+## Status (as of 2026-05-21)
+
+The critical path (Phases 0 → 1 → 2 → 3) shipped on 2026-05-21. See `BUILD_PLAN.md` M6.19 for the per-phase commit refs and which audit findings each phase closes.
+
+| Phase | State | Commit |
+|---|---|---|
+| 0 — Stop the PII bleed | Done | OE `9dc96db` |
+| 1 — Snapshot semantics + atomic start | Done | OE `8828428` + migration `20260521120000` |
+| 2 — State fences + idempotency | Done | OE `d37bd8d` |
+| 3 — Stale-session sweep | Done | OE `24eb257` |
+| 4 — Auto-save rewrite | Pending | — |
+| 5 — Canvas client robustness | Pending | — |
+| 6 — Roster sync correctness | Pending | — |
+| 7 — Polish | Pending | — |
+| 8 — Infrastructure hardening | Pending | — |
+| 9 — Verification + observability | Pending | — |
+
+Phases 4–9 are independent of each other and of the shipped critical path; pick any order. Open questions for the relevant phases are still captured at the end of this doc.
+
 ## Recurring root causes
 
 1. **No snapshot semantics.** Sessions hold FK references to template / preset / roster / binding. Editing any of those mid-exam or after eval changes what an exam means retroactively. Auto-save makes mid-flight edits trivial.
