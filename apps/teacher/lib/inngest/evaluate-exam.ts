@@ -17,7 +17,11 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { loadRosterForCanvasAssignment, scrubText } from "@/lib/exam/scrub";
+import {
+  loadRosterForCanvasAssignment,
+  RosterMissingError,
+  scrubText,
+} from "@/lib/exam/scrub";
 import type { Database, Json } from "@oral-examiner/db";
 import type { TranscriptEntry } from "@/lib/exam/student-actions";
 import { EXAM_COMPLETED_EVENT, inngest } from "./client";
@@ -205,14 +209,37 @@ export const evaluateExam = inngest.createFunction(
     });
 
     // Defense-in-depth scrub on the outputs. The transcript IN was
-    // already scrubbed, so Gemini saw tokens — but a paraphrasing model
-    // could still emit a name if it inferred one. Re-run the roster
-    // scrub against the outputs.
+    // already scrubbed (Phase 0 enforces fail-closed at write time — a
+    // transcript in the DB at all means it was scrubbed under a valid
+    // roster), so Gemini only saw anon tokens. The defensive output scrub
+    // catches the edge case where a paraphrasing model could re-emit a
+    // name based on context.
+    //
+    // If the roster is missing at eval time (e.g., teacher rotated it
+    // after the exam ended), proceed with the unscrubbed Gemini outputs
+    // rather than retrying-then-failing the eval. The transcript-was-
+    // scrubbed invariant means the outputs are derived from anon-only
+    // text; the residual risk is the model hallucinating a real name,
+    // which is far smaller than the cost of stranded evals.
     const scrubbed = await step.run("scrub-outputs", async () => {
-      const roster = await loadRosterForCanvasAssignment(
-        admin,
-        session.canvas_assignment_id,
-      );
+      let roster;
+      try {
+        roster = await loadRosterForCanvasAssignment(
+          admin,
+          session.canvas_assignment_id,
+        );
+      } catch (err) {
+        if (err instanceof RosterMissingError) {
+          logger.warn(
+            `[evaluate-exam] roster_missing at output-scrub time session=${sessionId} reason=${err.reason} — proceeding without defensive scrub`,
+          );
+          return {
+            eval_text: rawEval,
+            student_summary: rawSummary,
+          };
+        }
+        throw err;
+      }
       return {
         eval_text: rawEval ? scrubText(rawEval, roster) : null,
         student_summary: scrubText(rawSummary, roster),

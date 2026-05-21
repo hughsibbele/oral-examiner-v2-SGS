@@ -12,6 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { EXAM_COMPLETED_EVENT, inngest } from "@/lib/inngest/client";
 import {
   loadRosterForCanvasAssignment,
+  RosterMissingError,
   scrubTranscriptEntries,
 } from "./scrub";
 import type { Database, Json } from "@oral-examiner/db";
@@ -112,10 +113,21 @@ export async function flushTranscript(
     return { error: `Session is ${guard.state}, can't flush.` };
   }
   const admin = createAdminClient();
-  const roster = await loadRosterForCanvasAssignment(
-    admin,
-    guard.canvasAssignmentId,
-  );
+  let roster;
+  try {
+    roster = await loadRosterForCanvasAssignment(
+      admin,
+      guard.canvasAssignmentId,
+    );
+  } catch (err) {
+    if (err instanceof RosterMissingError) {
+      console.warn(
+        `[flushTranscript] roster_missing session=${examSessionId} reason=${err.reason}`,
+      );
+      return { error: "roster_missing" };
+    }
+    throw err;
+  }
   const trimmed = entries.slice(-MAX_TRANSCRIPT_ENTRIES);
   const scrubbed = scrubTranscriptEntries(trimmed, roster);
   const { error } = await admin
@@ -137,24 +149,37 @@ export async function flushTranscript(
  * (the student finished talking; losing audio is recoverable via transcript)
  * but eval may have less context.
  *
- * Throws on any auth/DB failure — `redirect()` itself throws on success,
- * so the client must not wrap this in try/catch (would swallow the
- * redirect).
+ * Return contract: `redirect()` throws on success, so the Promise only
+ * resolves when the action FAILED. A returned `{ error: ... }` means the
+ * session was NOT marked completed; the client should surface the message.
+ * `error === "roster_missing"` is the Phase 0 fail-closed signal that no
+ * transcript was written (student speech is anon-token-only territory).
  */
 export async function endExamSession(
   examSessionId: string,
   finalTranscript: TranscriptEntry[],
   durationSec: number,
   audioPath: string | null,
-): Promise<void> {
+): Promise<{ error: string }> {
   const guard = await authorizeForSession(examSessionId);
-  if (!guard.ok) throw new Error(`endExamSession: ${guard.reason}`);
+  if (!guard.ok) return { error: guard.reason };
 
   const admin = createAdminClient();
-  const roster = await loadRosterForCanvasAssignment(
-    admin,
-    guard.canvasAssignmentId,
-  );
+  let roster;
+  try {
+    roster = await loadRosterForCanvasAssignment(
+      admin,
+      guard.canvasAssignmentId,
+    );
+  } catch (err) {
+    if (err instanceof RosterMissingError) {
+      console.warn(
+        `[endExamSession] roster_missing session=${examSessionId} reason=${err.reason} — refusing to write unscrubbed transcript`,
+      );
+      return { error: "roster_missing" };
+    }
+    throw err;
+  }
   const trimmed = finalTranscript.slice(-MAX_TRANSCRIPT_ENTRIES);
   const scrubbed = scrubTranscriptEntries(trimmed, roster);
 
@@ -180,7 +205,7 @@ export async function endExamSession(
       audio_url: audioPath,
     })
     .eq("id", examSessionId);
-  if (updateErr) throw new Error(`endExamSession: ${updateErr.message}`);
+  if (updateErr) return { error: `endExamSession: ${updateErr.message}` };
 
   if (unusedMinutes > 0) {
     // Best-effort. A refund failure shouldn't block the session

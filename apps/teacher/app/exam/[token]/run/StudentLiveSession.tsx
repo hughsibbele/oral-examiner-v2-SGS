@@ -107,16 +107,6 @@ export function StudentLiveSession({
     }
   }, []);
 
-  const flushTranscriptBuffer = useCallback(async () => {
-    if (transcriptRef.current.length === 0) return;
-    try {
-      await flushTranscript(examSessionId, transcriptRef.current);
-    } catch {
-      // Best-effort — a flush failure mid-session shouldn't crash the
-      // exam. Next interval retries.
-    }
-  }, [examSessionId]);
-
   const cleanup = useCallback(() => {
     try {
       sessionRef.current?.close();
@@ -162,6 +152,31 @@ export function StudentLiveSession({
 
     void releaseWakeLock();
   }, [releaseWakeLock]);
+
+  // When the server refuses a flush because the roster is missing (Phase 0
+  // fail-closed), stop the session immediately so we don't accumulate more
+  // unscrubbed entries in the client's in-memory buffer. The student sees a
+  // "tell your teacher" error; the row stays in_progress until the teacher
+  // resets it (or the Phase 3 sweep ages it out).
+  const ROSTER_MISSING_MSG =
+    "We can't save your transcript right now — please tell your teacher. Your exam has not been recorded.";
+
+  const flushTranscriptBuffer = useCallback(async () => {
+    if (transcriptRef.current.length === 0) return;
+    try {
+      const result = await flushTranscript(
+        examSessionId,
+        transcriptRef.current,
+      );
+      if ("error" in result && result.error === "roster_missing") {
+        cleanup();
+        setStatus({ kind: "error", msg: ROSTER_MISSING_MSG });
+      }
+    } catch {
+      // Best-effort — a network / RSC failure mid-session shouldn't crash
+      // the exam. Next interval retries.
+    }
+  }, [examSessionId, cleanup]);
 
   // Unmount cleanup. We intentionally do NOT auto-end the exam on unmount
   // (a navigation away or accidental refresh shouldn't auto-complete the
@@ -576,13 +591,24 @@ export function StudentLiveSession({
       }
     }
 
-    // Throws (via Next's redirect()) on success.
-    await endExamSession(
+    // Throws (via Next's redirect()) on success. If the Promise resolves
+    // at all, endExamSession refused — surface the error to the student.
+    // roster_missing is the Phase 0 fail-closed signal that no transcript
+    // was written (PII safety wins over UX).
+    const result = await endExamSession(
       examSessionId,
       finalTranscript,
       durationSec,
       audioPath,
     );
+    if (result.error === "roster_missing") {
+      setStatus({ kind: "error", msg: ROSTER_MISSING_MSG });
+    } else {
+      setStatus({
+        kind: "error",
+        msg: `Couldn't end the exam: ${result.error}`,
+      });
+    }
   }
 
   /**
