@@ -11,7 +11,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { EXAM_COMPLETED_EVENT, inngest } from "@/lib/inngest/client";
 import {
-  loadRosterForCanvasAssignment,
+  loadRosterForSession,
   RosterMissingError,
   scrubTranscriptEntries,
 } from "./scrub";
@@ -115,10 +115,7 @@ export async function flushTranscript(
   const admin = createAdminClient();
   let roster;
   try {
-    roster = await loadRosterForCanvasAssignment(
-      admin,
-      guard.canvasAssignmentId,
-    );
+    roster = await loadRosterForSession(admin, examSessionId);
   } catch (err) {
     if (err instanceof RosterMissingError) {
       console.warn(
@@ -167,10 +164,7 @@ export async function endExamSession(
   const admin = createAdminClient();
   let roster;
   try {
-    roster = await loadRosterForCanvasAssignment(
-      admin,
-      guard.canvasAssignmentId,
-    );
+    roster = await loadRosterForSession(admin, examSessionId);
   } catch (err) {
     if (err instanceof RosterMissingError) {
       console.warn(

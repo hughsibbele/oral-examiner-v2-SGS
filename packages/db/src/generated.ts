@@ -204,12 +204,17 @@ export type Database = {
           completed_at: string | null
           created_at: string
           eval_error: string | null
+          eval_prompt_body_snapshot: string | null
           eval_text: string | null
           exam_template_id: string | null
           excluded_reason: string | null
           id: string
           live_minutes_used: number
+          persona_name_snapshot: string | null
           personality_preset_id: string | null
+          roster_snapshot: Json | null
+          rubric_body_snapshot: string | null
+          scrub_status: string
           selected_questions: Json | null
           state: Database["public"]["Enums"]["exam_session_state"]
           student_id: string
@@ -227,12 +232,17 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           eval_error?: string | null
+          eval_prompt_body_snapshot?: string | null
           eval_text?: string | null
           exam_template_id?: string | null
           excluded_reason?: string | null
           id?: string
           live_minutes_used?: number
+          persona_name_snapshot?: string | null
           personality_preset_id?: string | null
+          roster_snapshot?: Json | null
+          rubric_body_snapshot?: string | null
+          scrub_status?: string
           selected_questions?: Json | null
           state?: Database["public"]["Enums"]["exam_session_state"]
           student_id: string
@@ -250,12 +260,17 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           eval_error?: string | null
+          eval_prompt_body_snapshot?: string | null
           eval_text?: string | null
           exam_template_id?: string | null
           excluded_reason?: string | null
           id?: string
           live_minutes_used?: number
+          persona_name_snapshot?: string | null
           personality_preset_id?: string | null
+          roster_snapshot?: Json | null
+          rubric_body_snapshot?: string | null
+          scrub_status?: string
           selected_questions?: Json | null
           state?: Database["public"]["Enums"]["exam_session_state"]
           student_id?: string
@@ -888,6 +903,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      begin_exam_session: {
+        Args: {
+          p_canvas_assignment_id: string
+          p_selected_questions: Json
+          p_student_id: string
+        }
+        Returns: {
+          archived_prior_id: string
+          classification: string
+          session_id: string
+        }[]
+      }
       check_and_increment_gemini_live_minutes: {
         Args: {
           p_default_cap: number
@@ -948,7 +975,8 @@ export type Tables<
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals

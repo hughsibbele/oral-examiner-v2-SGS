@@ -663,9 +663,37 @@ export async function deleteTemplate(formData: FormData): Promise<ActionResult> 
     };
   }
 
+  // Phase 1 of REMEDIATION_PLAN.md flipped exam_sessions.exam_template_id
+  // from ON DELETE CASCADE to RESTRICT — deleting a template that has
+  // session rows now fails with a foreign-key violation (SQLSTATE 23503)
+  // instead of silently wiping student work. Pre-check + friendly copy
+  // first; the FK is the last line of defense.
+  const sessionCheckAdmin = createAdminClient();
+  const { count: sessionCount } = await sessionCheckAdmin
+    .from("exam_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("exam_template_id", id);
+  if ((sessionCount ?? 0) > 0) {
+    return {
+      ok: false,
+      error: `This template has ${sessionCount} student session${sessionCount === 1 ? "" : "s"} attached. Templates with sessions can't be deleted — student transcripts and evaluations point at this template by foreign key. Archive the template instead, or contact an admin if you need to remove sessions first.`,
+    };
+  }
+
   const supabase = await createServerSupabase();
   const { error } = await supabase.from("exam_templates").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // Belt-and-braces: catch the FK violation if a session was inserted
+    // between the pre-check and the delete (race window is tiny but real).
+    if (error.code === "23503") {
+      return {
+        ok: false,
+        error:
+          "This template can't be deleted: student sessions still reference it. Refresh and try again, or archive instead.",
+      };
+    }
+    return { ok: false, error: error.message };
+  }
 
   revalidatePath(AGENTS_PATH);
   revalidatePath("/dashboard");

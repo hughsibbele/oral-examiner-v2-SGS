@@ -38,16 +38,18 @@ export class RosterMissingError extends Error {
 }
 
 /**
- * Resolve the roster used for scrubbing this session's transcript.
+ * Resolve the roster used for scrubbing this session's transcript by the
+ * binding chain. Phase 1 of the remediation plan replaces this lookup with
+ * `loadRosterForSession` (which reads exam_sessions.roster_snapshot, frozen
+ * at session start); this function is kept as the fallback for legacy
+ * sessions created before the snapshot column landed.
  *
  * Path: binding(canvas_assignment_id) → (teacher_id, canvas_course_id) →
  * course_rosters.students jsonb.
  *
  * Throws RosterMissingError if any of: the binding query errors, no binding
  * exists, the roster query errors, no course_rosters row exists, or the
- * roster row exists but its students array is empty / malformed. Phase 1 of
- * the remediation plan will replace this lookup with a session-time roster
- * snapshot column; until then, missing roster at flush time is a hard fail.
+ * roster row exists but its students array is empty / malformed.
  */
 export async function loadRosterForCanvasAssignment(
   admin: Admin,
@@ -91,6 +93,47 @@ export async function loadRosterForCanvasAssignment(
     );
   }
   return roster;
+}
+
+/**
+ * Phase 1: prefer the session's frozen roster snapshot over the live
+ * course_rosters lookup. New sessions created via begin_exam_session RPC
+ * always have roster_snapshot populated; legacy sessions (created before
+ * the Phase 1 migration) fall back to the binding-chain lookup.
+ *
+ * Throws RosterMissingError if neither path yields a non-empty roster.
+ * This keeps the Phase 0 fail-closed policy: callers that catch this and
+ * skip the DB write are the contract.
+ */
+export async function loadRosterForSession(
+  admin: Admin,
+  examSessionId: string,
+): Promise<Roster> {
+  const { data: row, error } = await admin
+    .from("exam_sessions")
+    .select("roster_snapshot, canvas_assignment_id")
+    .eq("id", examSessionId)
+    .maybeSingle();
+  if (error) {
+    throw new RosterMissingError(
+      `session lookup failed for session=${examSessionId}: ${error.message}`,
+    );
+  }
+  if (!row) {
+    throw new RosterMissingError(
+      `exam_sessions row ${examSessionId} not found`,
+    );
+  }
+  if (row.roster_snapshot) {
+    const roster = row.roster_snapshot as unknown as Roster | undefined;
+    if (roster && Array.isArray(roster) && roster.length > 0) {
+      return roster;
+    }
+    // roster_snapshot present but empty/malformed: fall through to legacy
+    // lookup rather than failing — same fail-closed guarantee, just from
+    // the live source.
+  }
+  return loadRosterForCanvasAssignment(admin, row.canvas_assignment_id);
 }
 
 /**

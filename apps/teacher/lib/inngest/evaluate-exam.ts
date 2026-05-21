@@ -18,7 +18,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  loadRosterForCanvasAssignment,
+  loadRosterForSession,
   RosterMissingError,
   scrubText,
 } from "@/lib/exam/scrub";
@@ -72,7 +72,7 @@ export const evaluateExam = inngest.createFunction(
       const { data, error } = await admin
         .from("exam_sessions")
         .select(
-          "id, state, call_duration_sec, transcript, canvas_assignment_id, exam_template_id, personality_preset_id",
+          "id, state, call_duration_sec, transcript, canvas_assignment_id, exam_template_id, personality_preset_id, eval_prompt_body_snapshot, rubric_body_snapshot, persona_name_snapshot",
         )
         .eq("id", sessionId)
         .maybeSingle();
@@ -105,6 +105,21 @@ export const evaluateExam = inngest.createFunction(
     const transcriptText = formatTranscriptForEval(transcriptEntries);
 
     const agent = await step.run("load-agent", async () => {
+      // Phase 1: prefer the session snapshot. persona_name_snapshot is the
+      // most reliable sentinel — it's always set when begin_exam_session ran,
+      // even if both eval_prompt + rubric are null (ungraded agents).
+      const hasSnapshot = session.persona_name_snapshot !== null;
+      if (hasSnapshot) {
+        return {
+          evalPromptBody: session.eval_prompt_body_snapshot,
+          rubricBody: session.rubric_body_snapshot,
+          fromSnapshot: true,
+        };
+      }
+      // Legacy path: sessions started before the Phase 1 migration didn't
+      // populate snapshots. Fall back to the live template + preset read
+      // (the pre-Phase-1 behavior). After all legacy sessions complete,
+      // this branch can be removed.
       let template: Template | null = null;
       let preset: Preset | null = null;
       if (session.exam_template_id) {
@@ -132,12 +147,11 @@ export const evaluateExam = inngest.createFunction(
         if (pErr) throw new Error(`load-preset: ${pErr.message}`);
         preset = (p as Preset | null) ?? null;
       }
-      // template.X ?? preset.X — same pattern as the runtime assembler.
       const evalPromptBody =
         template?.eval_prompt_body ?? preset?.eval_prompt_body ?? null;
       const rubricBody =
         template?.rubric_body ?? preset?.rubric_body ?? null;
-      return { evalPromptBody, rubricBody };
+      return { evalPromptBody, rubricBody, fromSnapshot: false };
     });
 
     const summaryPrompt = await step.run("load-summary-prompt", async () => {
@@ -224,10 +238,7 @@ export const evaluateExam = inngest.createFunction(
     const scrubbed = await step.run("scrub-outputs", async () => {
       let roster;
       try {
-        roster = await loadRosterForCanvasAssignment(
-          admin,
-          session.canvas_assignment_id,
-        );
+        roster = await loadRosterForSession(admin, session.id);
       } catch (err) {
         if (err instanceof RosterMissingError) {
           logger.warn(

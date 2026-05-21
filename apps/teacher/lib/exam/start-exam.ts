@@ -1,5 +1,13 @@
 // M2b.5c.4 — server action invoked when the student clicks "Start exam"
 // on the pre-exam ready screen.
+//
+// REMEDIATION_PLAN Phase 1: the multi-step classify → archive → insert flow
+// is collapsed into a single SECURITY DEFINER RPC `begin_exam_session` that
+// runs the whole transition in one transaction with FOR UPDATE serialization
+// against the prior session row. The RPC also populates the new snapshot
+// columns (eval_prompt_body / rubric_body / persona_name / roster) so eval
+// reads a frozen rubric and scrubbing has an invariant roster — see
+// REMEDIATION_PLAN.md.
 
 "use server";
 
@@ -8,12 +16,6 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { selectQuestionsForSet } from "@/lib/runtime/select-questions";
 import { resolveExamContext } from "./resolve";
-import {
-  archiveReasonFor,
-  archiveSession,
-  classifyPriorSession,
-  findActivePriorSession,
-} from "./session";
 import type { Json } from "@oral-examiner/db";
 
 const ALLOWED_DOMAIN =
@@ -21,16 +23,11 @@ const ALLOWED_DOMAIN =
 
 /**
  * Start a fresh exam session. Re-validates everything server-side (auth,
- * binding, roster, prior-session race) so a stale page can't sneak past
- * the checks the page handler made on render.
+ * binding, roster) and then delegates the actual classify-archive-insert
+ * transition to the begin_exam_session RPC so it's serialized + atomic.
  *
- * On success: inserts an exam_sessions row with state='started' and the
- * pre-selected question list, then redirects to the live-voice URL.
- * Question selection uses Node's crypto.randomInt — never the LLM.
- *
- * The session row points at EITHER an exam_template (teacher customized)
- * OR a personality_preset (binding picked default verbatim) per the
- * 20260519131123 schema. The CHECK constraint enforces exactly-one-of.
+ * Question selection still runs here (Node's crypto.randomInt is preferred
+ * over Postgres's random() for exam question selection — CSPRNG > PRNG).
  */
 export async function startExam(formData: FormData): Promise<void> {
   const canvasAssignmentId = formData.get("canvas_assignment_id");
@@ -49,6 +46,11 @@ export async function startExam(formData: FormData): Promise<void> {
     throw new Error("startExam: wrong domain");
   }
 
+  // resolveExamContext also upserts the students row + links auth_user_id,
+  // which the RPC depends on (it takes p_student_id). The page handler
+  // already called resolve to render the ready screen; we re-call here to
+  // catch any race (e.g., teacher unassigned the agent between page load
+  // and form submit).
   const resolution = await resolveExamContext({
     canvasAssignmentId,
     studentEmail: user.email,
@@ -58,55 +60,51 @@ export async function startExam(formData: FormData): Promise<void> {
     throw new Error(`startExam: ${resolution.kind}`);
   }
 
-  const { binding, student, agent } = resolution;
-
-  // Race-guard: re-check the prior session right before insert. A second
-  // tab could have just transitioned to completed since the page loaded.
-  const prior = await findActivePriorSession({
-    canvasAssignmentId,
-    studentId: student.id,
-  });
-  if (prior) {
-    const verdict = classifyPriorSession(prior);
-    if (verdict === "completion_blocked") {
-      throw new Error("startExam: already completed");
-    }
-    if (verdict === "live_session") {
-      // Tab race — let the run URL handle it.
-      redirect(`/exam/${canvasAssignmentId}/run`);
-    }
-    const reason = archiveReasonFor(verdict);
-    if (reason) {
-      await archiveSession(prior.id, reason);
-    }
-  }
-
-  const questionSetId = pickQuestionSetId(agent);
+  const { student, agent } = resolution;
 
   const admin = createAdminClient();
+  const questionSetId = pickQuestionSetId(agent);
   const selectedQuestions = questionSetId
     ? await selectQuestionsForSet(questionSetId, admin)
     : [];
 
-  // Wire the agent identifier — exactly one of (template, preset) per the
-  // CHECK constraint.
-  const agentFk =
-    binding.exam_template_id !== null
-      ? { exam_template_id: binding.exam_template_id }
-      : { personality_preset_id: binding.personality_preset_id };
-
-  const { error: insertErr } = await admin.from("exam_sessions").insert({
-    ...agentFk,
-    canvas_assignment_id: canvasAssignmentId,
-    student_id: student.id,
-    state: "started",
-    selected_questions: selectedQuestions as unknown as Json,
+  const { data, error } = await admin.rpc("begin_exam_session", {
+    p_canvas_assignment_id: canvasAssignmentId,
+    p_student_id: student.id,
+    p_selected_questions: selectedQuestions as unknown as Json,
   });
 
-  if (insertErr) {
-    throw new Error(`startExam: insert failed: ${insertErr.message}`);
+  if (error) {
+    // The RPC raises P0001 with a known message for each semantic failure.
+    // Pattern-match so the caller throws / redirects with a meaningful path.
+    const msg = error.message ?? "";
+    if (msg.includes("no_binding")) {
+      throw new Error("startExam: no_binding");
+    }
+    if (msg.includes("no_agent")) {
+      throw new Error("startExam: no_agent");
+    }
+    if (msg.includes("roster_missing")) {
+      throw new Error("startExam: roster_missing");
+    }
+    if (msg.includes("completion_blocked")) {
+      throw new Error("startExam: already_completed");
+    }
+    // Belt-and-braces: the partial unique index could fire on a concurrent
+    // racer that beat us through the FOR UPDATE window. Redirect to /run;
+    // the runs page handles state on its own.
+    if (error.code === "23505") {
+      redirect(`/exam/${canvasAssignmentId}/run`);
+    }
+    throw new Error(`startExam: ${msg || "RPC failed"}`);
   }
 
+  if (!data || data.length === 0) {
+    throw new Error("startExam: RPC returned no rows");
+  }
+
+  // classification of 'live_session' means an existing started/in_progress
+  // row was found and reused; the redirect is the same in both cases.
   redirect(`/exam/${canvasAssignmentId}/run`);
 }
 
