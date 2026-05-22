@@ -5,6 +5,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { RefreshAssignmentsButton } from "./RefreshAssignmentsButton";
 import { RefreshRosterButton } from "./RefreshRosterButton";
 import { InstallCardButton } from "./InstallCardButton";
+import { bulkSuperGraderScope } from "@/lib/super-grader/scope";
 
 type CoursePayload = {
   id: number;
@@ -65,6 +66,10 @@ export default async function CoursePage({
     .order("last_synced_at", { ascending: false });
 
   const assignments = (assignmentRows ?? []) as unknown as AssignmentRow[];
+
+  const sgScopeMap = await bulkSuperGraderScope(
+    assignments.map((a) => a.canvas_assignment_id),
+  );
 
   // Which assignments have an agent assigned? Used to gate the install
   // button — no cards without agents.
@@ -127,11 +132,21 @@ export default async function CoursePage({
                     >
                       {a.name}
                     </Link>
-                    <div className="muted text-xs mt-0.5">
-                      Due {due}
-                      {typeof a.points_possible === "number" && ` · ${a.points_possible} pts`}
-                      {a.submission_types && a.submission_types.length > 0 && (
-                        <> · <code>{a.submission_types.join(", ")}</code></>
+                    <div className="muted text-xs mt-0.5 flex flex-wrap items-center gap-2">
+                      <span>
+                        Due {due}
+                        {typeof a.points_possible === "number" && ` · ${a.points_possible} pts`}
+                        {a.submission_types && a.submission_types.length > 0 && (
+                          <> · <code>{a.submission_types.join(", ")}</code></>
+                        )}
+                      </span>
+                      {sgScopeMap.get(row.canvas_assignment_id)?.in_scope && (
+                        <span
+                          className="rounded-full bg-[#7a1e46] px-2 py-0.5 text-[10px] font-medium text-white"
+                          title="This assignment is tracked in super-grader. OE will ship the eval + summary to SG; SG owns the final Canvas post."
+                        >
+                          ↗ super-grader
+                        </span>
                       )}
                     </div>
                   </div>
