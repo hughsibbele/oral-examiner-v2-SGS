@@ -120,7 +120,7 @@ alter table exam_sessions
 - `start-exam.ts`: replace the multi-step logic with one RPC call. Catch `23505` (unique violation) → friendly "you already have a session" redirect.
 - `evaluate-exam.ts`: read `eval_prompt_body_snapshot`, `rubric_body_snapshot`, `persona_name_snapshot` — never re-fetch from `exam_templates` for eval.
 - `scrub.ts`: read `roster_snapshot` from the session row, not `course_rosters`. Remove `loadRosterForCanvasAssignment`.
-- `auth-token/route.ts`: see open question #1 below.
+- `auth-token/route.ts`: **read live, not snapshot** (resolved 2026-05-21, see open question #1 below). System prompt assembly stays on live template + preset rows; only eval / rubric / scrub-roster read snapshots. The Live API freezes the system prompt at connect, so mid-call drift is physically impossible; the only realistic window is Start→Connect (seconds), and live-read in that window is the *desired* behavior (teacher hotfix of a freshly-installed typo reaches the next student without resetting everyone). No new snapshot columns needed for persona_body / flow_body / opening_text / closing_text / intake_config / question_set.
 - `deleteTemplate` action: detect `ON DELETE RESTRICT` rejection → surface "this template has student sessions — archive instead" UX.
 
 **Kills:**
@@ -280,7 +280,7 @@ alter table exam_sessions
 **Scope:**
 1. **Inngest re-sync post-deploy hook** — Vercel deploy hook that `PUT`s `/api/inngest` after every prod deploy. Eliminates the documented gotcha for OE, HAH, HH simultaneously (one script in `scripts/`).
 2. **"Re-install all cards" admin button** — for Vercel renames. Walks every binding for the current teacher, re-PUTs Canvas with current `NEXT_PUBLIC_APP_URL`. Document in the rename runbook.
-3. **`super_grader_post_status` decision** — see open question #2 below. Either ship the webhook (M2b TODO) or drop the columns/enum.
+3. **Drop unused `super_grader_post_status` enum + `super_grader_response` jsonb columns** (resolved 2026-05-21, see open question #2 below). They're vestigial — modeled after HH's same-named columns but no OE code writes them, and M7 (Drive-as-spine) changed the destination model since they were added. Empty columns imply queued work and will mislead future readers. If M3.7 admin SG-routing ships later, re-adding two columns + an enum value is a one-line migration. Migration: drop the columns, drop the enum type.
 
 **Daily-cap policy:** intentionally NOT included. AI Studio backend enforces spend limits, so the per-teacher cap on real exams isn't needed.
 
@@ -313,9 +313,9 @@ alter table exam_sessions
 
 ## Open questions to resolve before / during the relevant phase
 
-1. **Phase 1 — auth-token snapshot purity.** Should the auth-token route read from `_snapshot` columns (full snapshot purity, no mid-session prompt edits) or from live template (so a teacher can hotfix a typo right after install, while eval still reads snapshot)? Asymmetry is convenient but worth a deliberate decision. *Status: unresolved.*
+1. **Phase 1 — auth-token snapshot purity.** *Resolved 2026-05-21: read live, not snapshot.* The Live API freezes the system prompt at the moment of connect, so mid-call drift is physically impossible — the only window where a live read differs from a snapshot read is the seconds-to-minutes between `startExam` and `auth-token`. In that window, a live read is the *desired* behavior: it lets a teacher hotfix a typo on a freshly-installed agent and have it reach the next student without resetting everyone. The damage case Phase 1 was designed to kill (teacher auto-saves the rubric while eval runs and the eval becomes meaningless) is already closed by the eval-side snapshot. Extending snapshots to cover persona_body / flow_body / opening_text / closing_text / intake_config / question_set is migration surface for a problem the Live API can't have. Asymmetric on purpose: **eval / rubric / scrub-roster read snapshots; system-prompt assembly reads live.**
 
-2. **Phase 8 — super_grader webhook.** The schema has `super_grader_post_status` enum + `super_grader_response` jsonb columns on `exam_sessions`, but no code path posts to super-grader. Options: (a) ship the webhook (M2b TODO from the original plan), or (b) drop the columns + enum so the data model stops implying queued work. *Status: unresolved.*
+2. **Phase 8 — super_grader webhook.** *Resolved 2026-05-21: drop the columns + enum.* `super_grader_post_status` + `super_grader_response` are vestigial — modeled after HH's same-named columns but no OE code writes them, and M7 (Drive-as-spine) changed the destination model since they were added. Empty columns imply queued work and will mislead future readers. If M3.7 admin SG-routing ever ships, re-adding two columns + an enum value is a one-line migration. Migration lives in Phase 8 above.
 
 ## Suggested triage order
 
