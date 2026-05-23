@@ -8,9 +8,7 @@ import { CanvasTokenForm } from "./CanvasTokenForm";
 import { CardTextEditor } from "./CardTextEditor";
 
 function readAppBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? ""
-  );
+  return process.env.NEXT_PUBLIC_APP_URL ?? "";
 }
 
 export default async function CanvasSetupPage() {

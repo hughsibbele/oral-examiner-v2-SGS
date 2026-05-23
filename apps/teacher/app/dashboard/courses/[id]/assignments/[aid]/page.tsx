@@ -14,9 +14,7 @@ import {
 } from "./TemplatePicker";
 
 function readAppBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? ""
-  );
+  return process.env.NEXT_PUBLIC_APP_URL ?? "";
 }
 
 type AssignmentPayload = {

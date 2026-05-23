@@ -474,8 +474,7 @@ export async function installCardForAssignment(args: {
   const canvas = await getCanvasConfigForTeacher();
   if (!canvas) return { ok: false, error: "Canvas token not configured." };
 
-  const appBaseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "";
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   if (!appBaseUrl) {
     return { ok: false, error: "NEXT_PUBLIC_APP_URL not set." };
   }

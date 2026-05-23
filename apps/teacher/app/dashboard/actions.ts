@@ -23,14 +23,9 @@ import { resolveCardTextForTeacher } from "@/lib/card-text/resolve";
 import { isActiveTerm } from "@/lib/sync/active-term";
 
 function readAppBaseUrl(): string {
-  const url =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.NEXT_PUBLIC_BASE_URL ??
-    "";
+  const url = process.env.NEXT_PUBLIC_APP_URL ?? "";
   if (!url) {
-    throw new Error(
-      "NEXT_PUBLIC_APP_URL (or legacy NEXT_PUBLIC_BASE_URL) is not set.",
-    );
+    throw new Error("NEXT_PUBLIC_APP_URL is not set.");
   }
   return url;
 }

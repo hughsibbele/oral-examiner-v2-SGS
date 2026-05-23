@@ -21,9 +21,7 @@ type CardDefaultsRow = {
 };
 
 function readAppBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? ""
-  );
+  return process.env.NEXT_PUBLIC_APP_URL ?? "";
 }
 
 const SYSTEM_PROMPT_META: Record<string, { title: string; subtitle: string }> = {
