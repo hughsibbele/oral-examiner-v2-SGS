@@ -281,11 +281,19 @@ export const evaluateExam = inngest.createFunction(
     //
     // Mirrors HH M7.5's save-to-drive step in
     // `apps/web/src/lib/inngest/transcribe-discussion.ts`.
+    //
+    // Teacher resolution: exam_sessions has no direct teacher_id column.
+    // Resolve via exam_template_bindings keyed by canvas_assignment_id
+    // (matches post-session-comment.ts). This covers BOTH template-
+    // backed and preset-direct sessions; an earlier draft of this step
+    // joined exam_templates!inner(teacher_id) which silently skipped
+    // preset-direct sessions (the 20260519131123 migration lets
+    // exam_sessions point at a preset without going through a template).
     const driveOutcome = await step.run("save-to-drive", async () => {
       const { data: row, error: loadErr } = await admin
         .from("exam_sessions")
         .select(
-          "id, student_id, audio_url, transcript, student_summary, eval_text, completed_at, created_at, canvas_assignment_id, drive_doc_url, exam_templates!inner(teacher_id)",
+          "id, student_id, audio_url, transcript, student_summary, eval_text, completed_at, created_at, canvas_assignment_id, drive_doc_url",
         )
         .eq("id", sessionId)
         .single();
@@ -299,21 +307,22 @@ export const evaluateExam = inngest.createFunction(
       if (row.drive_doc_url) {
         return { ok: true, skipped: true, drive_doc_url: row.drive_doc_url };
       }
-      type TeacherJoin = { teacher_id: string };
-      const tpl = Array.isArray(row.exam_templates)
-        ? (row.exam_templates[0] as TeacherJoin | undefined)
-        : (row.exam_templates as TeacherJoin | null);
-      if (!tpl?.teacher_id) {
+      const { data: binding, error: bindingErr } = await admin
+        .from("exam_template_bindings")
+        .select("teacher_id")
+        .eq("canvas_assignment_id", row.canvas_assignment_id)
+        .maybeSingle();
+      if (bindingErr || !binding?.teacher_id) {
         return {
           ok: false,
           skipped: false,
-          error: "session has no exam_template teacher_id",
+          error: `binding lookup: ${bindingErr?.message ?? "no binding for assignment"}`,
         };
       }
       try {
         const refs = await saveExamSessionToDrive({
           id: row.id,
-          teacher_id: tpl.teacher_id,
+          teacher_id: binding.teacher_id,
           student_id: row.student_id,
           audio_url: row.audio_url,
           transcript: row.transcript as TranscriptEntry[] | null,
@@ -321,7 +330,7 @@ export const evaluateExam = inngest.createFunction(
           eval_text: row.eval_text,
           completed_at: row.completed_at,
           created_at: row.created_at,
-          canvas_assignment_id: row.canvas_assignment_id ?? "",
+          canvas_assignment_id: row.canvas_assignment_id,
         });
         const { error: writeErr } = await admin
           .from("exam_sessions")

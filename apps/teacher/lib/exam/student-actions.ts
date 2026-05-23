@@ -244,8 +244,14 @@ export async function endExamSession(
   // Best-effort: a failed send shouldn't block the redirect. The state is
   // already 'completed' so a teacher could manually re-trigger eval via
   // a future admin affordance if needed.
+  //
+  // M7.4 audit fix — deterministic event id dedups duplicate fires (UI
+  // replay button, fast double-End, retry from a stale tab) inside
+  // Inngest's rolling window, upstream of the worker's state check.
+  // Mirrors HH M6.22 Phase 2's `discussion-uploaded:${id}` pattern.
   try {
     await inngest.send({
+      id: `exam-completed:${examSessionId}`,
       name: EXAM_COMPLETED_EVENT,
       data: { exam_session_id: examSessionId },
     });
