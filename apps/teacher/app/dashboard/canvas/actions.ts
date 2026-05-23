@@ -6,6 +6,28 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getTeacher } from "@/lib/auth/teacher";
 import { revalidatePath } from "next/cache";
 
+// M7.2 — teacher master switch for OE's Canvas draft-comment writes.
+// Per-assignment override lives on exam_template_bindings.post_to_
+// canvas_comment (M6.18 destination picker); this is the global kill.
+export type ToggleCanvasCommentResult =
+  | { ok: true; enabled: boolean }
+  | { ok: false; error: string };
+
+export async function setCanvasCommentEnabled(
+  enabled: boolean,
+): Promise<ToggleCanvasCommentResult> {
+  const result = await getTeacher();
+  if (!result) return { ok: false, error: "not signed in" };
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("teachers")
+    .update({ canvas_comment_enabled: enabled })
+    .eq("id", result.teacher.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/dashboard/canvas");
+  return { ok: true, enabled };
+}
+
 type SaveResult =
   | { ok: true; canvasUserName: string; canvasUserId: number }
   | { ok: false; error: string };

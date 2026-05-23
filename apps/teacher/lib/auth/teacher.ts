@@ -1,5 +1,17 @@
+import { encryptSecret } from "@oral-examiner/crypto";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+function readGoogleTokenKeyFromEnv(): string {
+  const key = process.env.TEACHER_GTOKEN_ENC_KEY;
+  if (!key) {
+    throw new Error(
+      "TEACHER_GTOKEN_ENC_KEY env var is not set. Generate with " +
+        '`node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"`.',
+    );
+  }
+  return key;
+}
 
 export type Teacher = {
   id: string;
@@ -12,6 +24,15 @@ export type Teacher = {
   gemini_live_daily_cap_minutes: number | null;
   gemini_live_dryrun_daily_cap_minutes: number | null;
   gemini_text_daily_cap: number | null;
+  // M7.1 / M7.2 — Google OAuth tokens at rest + Drive folder + Canvas-
+  // comment master switch.
+  google_access_token: string | null;
+  google_refresh_token: string | null;
+  google_access_token_encrypted: string | null;
+  google_refresh_token_encrypted: string | null;
+  google_token_expires_at: string | null;
+  drive_folder_id: string | null;
+  canvas_comment_enabled: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -95,15 +116,31 @@ export async function ensureTeacherForUser(
 
   // Google access tokens are 1h; expire ours at 55min so the refresh helper
   // kicks in a comfortable margin before Google's boundary.
-  const tokenUpdates: Record<string, string> = {};
-  if (tokens?.access_token) {
-    tokenUpdates.google_access_token = tokens.access_token;
-    tokenUpdates.google_token_expires_at = new Date(
-      Date.now() + 55 * 60 * 1000,
-    ).toISOString();
-  }
-  if (tokens?.refresh_token) {
-    tokenUpdates.google_refresh_token = tokens.refresh_token;
+  //
+  // M7.1 — encrypt before write. Plaintext columns get nulled so the row
+  // converges to encrypted-only over time (HH M6.22 Phase 0b shape).
+  // Fail loud when the env key is missing — silent plaintext fallback
+  // would re-open the at-rest leak this work closes.
+  const tokenUpdates: Record<string, string | null> = {};
+  if (tokens?.access_token || tokens?.refresh_token) {
+    const key = readGoogleTokenKeyFromEnv();
+    if (tokens?.access_token) {
+      tokenUpdates.google_access_token_encrypted = encryptSecret(
+        tokens.access_token,
+        key,
+      );
+      tokenUpdates.google_access_token = null;
+      tokenUpdates.google_token_expires_at = new Date(
+        Date.now() + 55 * 60 * 1000,
+      ).toISOString();
+    }
+    if (tokens?.refresh_token) {
+      tokenUpdates.google_refresh_token_encrypted = encryptSecret(
+        tokens.refresh_token,
+        key,
+      );
+      tokenUpdates.google_refresh_token = null;
+    }
   }
 
   const admin = createAdminClient();

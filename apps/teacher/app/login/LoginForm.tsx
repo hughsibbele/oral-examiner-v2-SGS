@@ -8,11 +8,17 @@ import { createClient } from "@/lib/supabase/client";
 // attachments + save-template-to-Drive). Non-sensitive scope; per-file
 // authorization (Google only exposes files the user explicitly opens in our
 // app's Picker).
+//
+// M7.4 adds `documents` so the post-eval Drive doc creation can insert
+// the body via Docs API's batchUpdate (drive.file creates the file via
+// Drive API but the body insert needs the Docs scope). Matches HH/AID
+// scope shape.
 const SCOPES = [
   "openid",
   "email",
   "profile",
   "https://www.googleapis.com/auth/drive.file",
+  "https://www.googleapis.com/auth/documents",
 ].join(" ");
 
 export function LoginForm() {

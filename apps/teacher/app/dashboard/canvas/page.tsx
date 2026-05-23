@@ -6,6 +6,7 @@ import {
 } from "@/lib/card-text/resolve";
 import { CanvasTokenForm } from "./CanvasTokenForm";
 import { CardTextEditor } from "./CardTextEditor";
+import { CanvasCommentToggle } from "./CanvasCommentToggle";
 
 function readAppBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -22,6 +23,18 @@ export default async function CanvasSetupPage() {
       ])
     : [null, null];
 
+  // M7.2 — Drive connection status. OE's tokens land encrypted (M7.1);
+  // legacy plaintext columns still readable until backfill completes.
+  // Either shape indicates a connection.
+  const driveConnected = Boolean(
+    teacher &&
+      (teacher.google_access_token_encrypted ?? teacher.google_access_token) &&
+      (teacher.google_refresh_token_encrypted ?? teacher.google_refresh_token),
+  );
+  const driveFolderUrl = teacher?.drive_folder_id
+    ? `https://drive.google.com/drive/folders/${teacher.drive_folder_id}`
+    : null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -31,16 +44,17 @@ export default async function CanvasSetupPage() {
         <h1 className="heading text-2xl mt-2">Canvas &amp; Drive setup</h1>
         <p className="muted text-sm mt-1">
           OE v2 uses your Canvas API token to read courses and assignments,
-          install the branded card on each assignment, and (in Phase 3) post
-          oral-defense submissions on the student&apos;s behalf via{" "}
-          <code>as_user_id</code> masquerade. Drive setup arrives with M7
-          (cross-suite Drive-as-spine).
+          install the branded card on each assignment, and post oral-defense
+          submissions on the student&apos;s behalf via{" "}
+          <code>as_user_id</code> masquerade. Google Drive is per-teacher
+          OAuth — every completed exam saves a Doc into your{" "}
+          <strong>Oral Examiner</strong> folder (M7.4).
         </p>
       </div>
 
       {hasToken && (
         <div className="surface p-4 text-sm">
-          <span className="font-medium">✓ Connected</span>
+          <span className="font-medium">✓ Canvas connected</span>
           <span className="muted ml-2">
             Host: <code>{teacher.canvas_host}</code>. Token encrypted at rest.
           </span>
@@ -48,6 +62,84 @@ export default async function CanvasSetupPage() {
       )}
 
       <CanvasTokenForm hasExisting={hasToken} initialHost={teacher?.canvas_host ?? ""} />
+
+      {/* M7.2 — Google Drive section. Folder auto-created on first
+          eval; manual reset/picker land with M7.6 (HAH-specific) and
+          a future general folder-picker. */}
+      <section className="surface p-4 text-sm space-y-3">
+        <h2 className="font-medium">Google Drive</h2>
+        <dl className="grid grid-cols-[10rem_1fr] gap-y-1 text-xs">
+          <dt className="muted">Status</dt>
+          <dd>
+            {driveConnected ? (
+              <span>✓ Connected for {teacher?.display_name}</span>
+            ) : (
+              <span className="muted">
+                Not connected — sign out and back in with Google to grant
+                Drive scopes (drive.file + documents).
+              </span>
+            )}
+          </dd>
+          {driveConnected && (
+            <>
+              <dt className="muted">App folder</dt>
+              <dd>
+                {driveFolderUrl ? (
+                  <a
+                    href={driveFolderUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline-offset-2 hover:underline"
+                  >
+                    Open &ldquo;Oral Examiner&rdquo; in Drive ↗
+                  </a>
+                ) : (
+                  <span className="muted italic">
+                    Auto-created on your first completed exam.
+                  </span>
+                )}
+              </dd>
+              {teacher?.google_token_expires_at && (
+                <>
+                  <dt className="muted">Access token expires</dt>
+                  <dd>
+                    {new Date(teacher.google_token_expires_at).toLocaleString()}{" "}
+                    <span className="muted">
+                      (auto-refreshed when within 5 min of expiry)
+                    </span>
+                  </dd>
+                </>
+              )}
+            </>
+          )}
+        </dl>
+        {!driveConnected && (
+          <form action="/auth/signout" method="post">
+            <button type="submit" className="btn">
+              Sign out to reconnect
+            </button>
+          </form>
+        )}
+      </section>
+
+      {/* M7.2 — Canvas posting toggle. Master switch for OE's draft
+          comment writes; per-assignment override stays on
+          exam_template_bindings.post_to_canvas_comment. */}
+      {teacher && (
+        <section className="surface p-4 text-sm space-y-3">
+          <h2 className="font-medium">Canvas posting</h2>
+          <p className="muted text-xs">
+            When an exam finishes evaluating, OE can post a draft comment
+            on the student&rsquo;s Canvas submission carrying the Drive
+            doc link. Drafts are only visible to you in SpeedGrader until
+            you publish them. Per-assignment overrides live on each
+            template binding.
+          </p>
+          <CanvasCommentToggle
+            initialEnabled={teacher.canvas_comment_enabled}
+          />
+        </section>
+      )}
 
       {cardDefaults && cardOverrides && (
         <CardTextEditor
