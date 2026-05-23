@@ -199,10 +199,17 @@ export type Database = {
           audio_url: string | null
           call_duration_sec: number | null
           canvas_assignment_id: string
+          canvas_comment_error: string | null
+          canvas_comment_post_status: "ok" | "failed" | "skipped" | null
+          canvas_comment_posted_at: string | null
           canvas_draft_comment_id: string | null
           canvas_submission_id: string | null
           completed_at: string | null
           created_at: string
+          drive_audio_id: string | null
+          drive_audio_url: string | null
+          drive_doc_id: string | null
+          drive_doc_url: string | null
           eval_error: string | null
           eval_prompt_body_snapshot: string | null
           eval_text: string | null
@@ -227,10 +234,17 @@ export type Database = {
           audio_url?: string | null
           call_duration_sec?: number | null
           canvas_assignment_id: string
+          canvas_comment_error?: string | null
+          canvas_comment_post_status?: "ok" | "failed" | "skipped" | null
+          canvas_comment_posted_at?: string | null
           canvas_draft_comment_id?: string | null
           canvas_submission_id?: string | null
           completed_at?: string | null
           created_at?: string
+          drive_audio_id?: string | null
+          drive_audio_url?: string | null
+          drive_doc_id?: string | null
+          drive_doc_url?: string | null
           eval_error?: string | null
           eval_prompt_body_snapshot?: string | null
           eval_text?: string | null
@@ -255,10 +269,17 @@ export type Database = {
           audio_url?: string | null
           call_duration_sec?: number | null
           canvas_assignment_id?: string
+          canvas_comment_error?: string | null
+          canvas_comment_post_status?: "ok" | "failed" | "skipped" | null
+          canvas_comment_posted_at?: string | null
           canvas_draft_comment_id?: string | null
           canvas_submission_id?: string | null
           completed_at?: string | null
           created_at?: string
+          drive_audio_id?: string | null
+          drive_audio_url?: string | null
+          drive_doc_id?: string | null
+          drive_doc_url?: string | null
           eval_error?: string | null
           eval_prompt_body_snapshot?: string | null
           eval_text?: string | null
@@ -829,6 +850,7 @@ export type Database = {
       teachers: {
         Row: {
           auth_user_id: string
+          canvas_comment_enabled: boolean
           canvas_host: string | null
           canvas_token_encrypted: string | null
           card_body: string | null
@@ -838,6 +860,7 @@ export type Database = {
           card_title: string | null
           created_at: string
           display_name: string
+          drive_folder_id: string | null
           email: string
           gemini_live_daily_cap_minutes: number | null
           gemini_live_dryrun_daily_cap_minutes: number | null
@@ -852,6 +875,7 @@ export type Database = {
         }
         Insert: {
           auth_user_id: string
+          canvas_comment_enabled?: boolean
           canvas_host?: string | null
           canvas_token_encrypted?: string | null
           card_body?: string | null
@@ -861,6 +885,7 @@ export type Database = {
           card_title?: string | null
           created_at?: string
           display_name: string
+          drive_folder_id?: string | null
           email: string
           gemini_live_daily_cap_minutes?: number | null
           gemini_live_dryrun_daily_cap_minutes?: number | null
@@ -875,6 +900,7 @@ export type Database = {
         }
         Update: {
           auth_user_id?: string
+          canvas_comment_enabled?: boolean
           canvas_host?: string | null
           canvas_token_encrypted?: string | null
           card_body?: string | null
@@ -884,6 +910,7 @@ export type Database = {
           card_title?: string | null
           created_at?: string
           display_name?: string
+          drive_folder_id?: string | null
           email?: string
           gemini_live_daily_cap_minutes?: number | null
           gemini_live_dryrun_daily_cap_minutes?: number | null

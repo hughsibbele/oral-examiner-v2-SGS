@@ -22,6 +22,8 @@ import {
   RosterMissingError,
   scrubText,
 } from "@/lib/exam/scrub";
+import { postSessionDraftComment } from "@/lib/canvas/post-session-comment";
+import { saveExamSessionToDrive } from "@/lib/google/save-exam-session";
 import type { Database, Json } from "@oral-examiner/db";
 import type { TranscriptEntry } from "@/lib/exam/student-actions";
 import { EXAM_COMPLETED_EVENT, inngest } from "./client";
@@ -271,8 +273,142 @@ export const evaluateExam = inngest.createFunction(
       if (error) throw new Error(`write-results: ${error.message}`);
     });
 
+    // M7.4 — auto-save to Drive after the eval + summary land.
+    // Best-effort: a Drive failure (auth missing, quota, etc.) is
+    // recorded but does NOT propagate to onFailure (which would clobber
+    // the eval results just written above). Idempotent: skips when
+    // exam_sessions.drive_doc_url is already populated.
+    //
+    // Mirrors HH M7.5's save-to-drive step in
+    // `apps/web/src/lib/inngest/transcribe-discussion.ts`.
+    const driveOutcome = await step.run("save-to-drive", async () => {
+      const { data: row, error: loadErr } = await admin
+        .from("exam_sessions")
+        .select(
+          "id, student_id, audio_url, transcript, student_summary, eval_text, completed_at, created_at, canvas_assignment_id, drive_doc_url, exam_templates!inner(teacher_id)",
+        )
+        .eq("id", sessionId)
+        .single();
+      if (loadErr || !row) {
+        return {
+          ok: false,
+          skipped: false,
+          error: `load: ${loadErr?.message ?? "not found"}`,
+        };
+      }
+      if (row.drive_doc_url) {
+        return { ok: true, skipped: true, drive_doc_url: row.drive_doc_url };
+      }
+      type TeacherJoin = { teacher_id: string };
+      const tpl = Array.isArray(row.exam_templates)
+        ? (row.exam_templates[0] as TeacherJoin | undefined)
+        : (row.exam_templates as TeacherJoin | null);
+      if (!tpl?.teacher_id) {
+        return {
+          ok: false,
+          skipped: false,
+          error: "session has no exam_template teacher_id",
+        };
+      }
+      try {
+        const refs = await saveExamSessionToDrive({
+          id: row.id,
+          teacher_id: tpl.teacher_id,
+          student_id: row.student_id,
+          audio_url: row.audio_url,
+          transcript: row.transcript as TranscriptEntry[] | null,
+          student_summary: row.student_summary,
+          eval_text: row.eval_text,
+          completed_at: row.completed_at,
+          created_at: row.created_at,
+          canvas_assignment_id: row.canvas_assignment_id ?? "",
+        });
+        const { error: writeErr } = await admin
+          .from("exam_sessions")
+          .update({
+            drive_doc_id: refs.doc.id,
+            drive_doc_url: refs.doc.webViewLink,
+            drive_audio_id: refs.audio?.id ?? null,
+            drive_audio_url: refs.audio?.webViewLink ?? null,
+          })
+          .eq("id", sessionId);
+        if (writeErr) throw new Error(`persist: ${writeErr.message}`);
+        return {
+          ok: true,
+          skipped: false,
+          drive_doc_url: refs.doc.webViewLink,
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.info(`save-to-drive failed for ${sessionId}: ${message}`);
+        return { ok: false, skipped: false, error: message };
+      }
+    });
+
+    // M7.4 — post a draft Canvas comment on the student's submission
+    // carrying the Drive link. Single-shot (one session = one student =
+    // one comment); contrast with HH's per-class fan-out. Gated by the
+    // teacher master switch AND the per-assignment override (both
+    // checked inside postSessionDraftComment). Idempotent via
+    // canvas_comment_posted_at sentinel. Best-effort.
+    if (driveOutcome.ok && "drive_doc_url" in driveOutcome) {
+      await step.run("post-canvas-comment", async () => {
+        const { data: row, error: loadErr } = await admin
+          .from("exam_sessions")
+          .select("canvas_comment_posted_at")
+          .eq("id", sessionId)
+          .single();
+        if (loadErr) {
+          logger.info(
+            `post-canvas-comment load failed for ${sessionId}: ${loadErr.message}`,
+          );
+          return;
+        }
+        if (row.canvas_comment_posted_at) return; // already done
+
+        const outcome = await postSessionDraftComment({
+          examSessionId: sessionId,
+          driveDocUrl: driveOutcome.drive_doc_url,
+        });
+
+        if (outcome.kind === "skipped") {
+          await admin
+            .from("exam_sessions")
+            .update({
+              canvas_comment_post_status: "skipped",
+              canvas_comment_posted_at: new Date().toISOString(),
+              canvas_comment_error: outcome.reason.slice(0, 1000),
+            })
+            .eq("id", sessionId);
+          return;
+        }
+
+        if (outcome.kind === "posted") {
+          await admin
+            .from("exam_sessions")
+            .update({
+              canvas_comment_post_status: "ok",
+              canvas_comment_posted_at: new Date().toISOString(),
+              canvas_comment_error: null,
+            })
+            .eq("id", sessionId);
+          return;
+        }
+
+        // failed
+        await admin
+          .from("exam_sessions")
+          .update({
+            canvas_comment_post_status: "failed",
+            canvas_comment_posted_at: new Date().toISOString(),
+            canvas_comment_error: outcome.error.slice(0, 1000),
+          })
+          .eq("id", sessionId);
+      });
+    }
+
     logger.info(`[evaluate-exam] complete session=${sessionId}`);
-    return { ok: true };
+    return { ok: true, driveOk: driveOutcome.ok };
   },
 );
 
