@@ -12,25 +12,23 @@ export default async function AdminLayout({
   const teacherResult = await getTeacher();
   if (!teacherResult) redirect("/login?next=/admin");
 
-  // Self-bootstrap: if the admins table is empty and the current teacher's
-  // email matches INITIAL_ADMIN_EMAIL, promote them. Idempotent — once any
-  // admin exists, this never fires again.
   const bootstrap = await bootstrapAdminIfNeeded();
 
   const admin = await isAdmin();
   if (!admin) {
     return (
-      <>
+      <div className="flex min-h-screen flex-col bg-paper">
         <BrandHeader
-          eyebrow="Episcopal High School"
-          title="Oral Examiner — Admin"
-          nav={
-            <Link href="/dashboard" className="btn">
-              Back to dashboard
+          right={
+            <Link
+              href="/dashboard"
+              className="text-cool-gray transition-colors hover:text-maroon text-sm"
+            >
+              ← Dashboard
             </Link>
           }
         />
-        <main className="max-w-3xl mx-auto px-6 py-12">
+        <main className="max-w-3xl mx-auto flex-1 px-6 py-12">
           <h1 className="heading text-2xl mb-4">Admin access required</h1>
           <p className="text-sm leading-relaxed">
             This page is restricted to ecosystem admins. You&apos;re signed in as{" "}
@@ -40,30 +38,66 @@ export default async function AdminLayout({
             <p className="muted text-xs mt-4">Bootstrap diagnostic: {bootstrap.reason}</p>
           )}
         </main>
-      </>
+      </div>
     );
   }
 
+  const nav = (
+    <nav className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2 text-sm">
+      <Link
+        href="/admin"
+        className="text-ink transition-colors hover:text-dark-blue"
+      >
+        Overview
+      </Link>
+      <Link
+        href="/admin/agents"
+        className="text-ink transition-colors hover:text-dark-blue"
+      >
+        Agents
+      </Link>
+      <Link
+        href="/admin/admins"
+        className="text-ink transition-colors hover:text-dark-blue"
+      >
+        Admins
+      </Link>
+      <Link
+        href="/dashboard"
+        className="text-cool-gray transition-colors hover:text-maroon"
+      >
+        ← Dashboard
+      </Link>
+      <span
+        className="text-xs italic text-cool-gray"
+        title={teacherResult.teacher.email}
+      >
+        {teacherResult.teacher.display_name}
+      </span>
+      <form action="/auth/signout" method="post">
+        <button
+          type="submit"
+          className="text-xs italic text-cool-gray transition-colors hover:text-maroon"
+        >
+          Sign out
+        </button>
+      </form>
+    </nav>
+  );
+
   return (
-    <>
+    <div className="flex min-h-screen flex-col bg-paper">
       <BrandHeader
-        eyebrow="Episcopal High School"
-        title="Oral Examiner — Admin"
-        nav={
-          <>
-            <Link href="/admin">Overview</Link>
-            <Link href="/admin/agents">Agents</Link>
-            <Link href="/admin/admins">Admins</Link>
-            <Link href="/dashboard">Dashboard</Link>
-            <form action="/auth/signout" method="post" className="inline">
-              <button type="submit" className="btn">
-                Sign out
-              </button>
-            </form>
-          </>
-        }
+        logoHref="/admin"
+        ruleClassName="h-0.5 border-0 bg-dark-blue"
+        right={nav}
       />
-      <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
-    </>
+
+      <main className="flex-1 px-6 py-8">{children}</main>
+
+      <footer className="border-t border-light-blue/40 bg-white/50 px-6 py-3 text-center text-xs italic text-cool-gray">
+        Oral Examiner &middot; Admin &middot; Episcopal High School
+      </footer>
+    </div>
   );
 }

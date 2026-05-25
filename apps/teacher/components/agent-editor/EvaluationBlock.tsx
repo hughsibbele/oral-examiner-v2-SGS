@@ -76,7 +76,7 @@ export function EvaluationBlock(props: {
       ref={formRef}
       onSubmit={(e) => e.preventDefault()}
       data-track-dirty
-      className="surface p-5 space-y-4"
+      className="bg-white border border-light-blue rounded p-5 space-y-4"
     >
       <input type="hidden" name="id" value={rowId} />
       <div className="flex items-baseline justify-between gap-3">
@@ -102,7 +102,7 @@ export function EvaluationBlock(props: {
               ? "(leave empty to inherit from the preset's eval prompt)"
               : undefined
           }
-          className="w-full border border-rule rounded px-3 py-2 text-xs font-mono leading-relaxed"
+          className="w-full border border-light-blue rounded px-3 py-2 text-xs font-mono leading-relaxed"
         />
         {mode === "template" && (
           <InheritIndicator
@@ -131,7 +131,7 @@ export function EvaluationBlock(props: {
           defaultValue={values.rubric_body ?? ""}
           rows={18}
           placeholder="(empty = ungraded)"
-          className="w-full border border-rule rounded px-3 py-2 text-xs font-mono leading-relaxed"
+          className="w-full border border-light-blue rounded px-3 py-2 text-xs font-mono leading-relaxed"
         />
         {mode === "template" && (
           <InheritIndicator

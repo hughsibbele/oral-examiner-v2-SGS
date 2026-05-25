@@ -83,7 +83,7 @@ export default async function AgentTemplatesPage() {
   ]);
   if (presetsRes.error) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <h1 className="heading text-2xl mb-2">Agent Templates</h1>
         <p className="text-sm">
           Failed to load defaults: {presetsRes.error.message}
@@ -209,7 +209,7 @@ export default async function AgentTemplatesPage() {
       </div>
 
       {/* New custom template */}
-      <section className="surface p-5">
+      <section className="bg-white border border-light-blue rounded p-5">
         <h2 className="heading text-lg mb-2">+ New custom template</h2>
         <NewCustomTemplateForm
           sources={sourceOptions}
@@ -231,7 +231,7 @@ export default async function AgentTemplatesPage() {
         </div>
 
         {templates.length === 0 ? (
-          <div className="rounded border border-rule bg-white p-5 text-sm muted">
+          <div className="rounded border border-light-blue bg-white p-5 text-sm muted">
             No custom templates yet. Clone a default above to start customizing.
           </div>
         ) : (

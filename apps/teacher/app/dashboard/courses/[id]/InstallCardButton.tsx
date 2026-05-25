@@ -68,7 +68,7 @@ export function InstallCardButton({
           type="button"
           disabled
           title="Pick an agent template first — every card needs an agent."
-          className="btn btn-sm opacity-50 cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed opacity-50 cursor-not-allowed"
         >
           Install card
         </button>
@@ -82,7 +82,7 @@ export function InstallCardButton({
       <button
         onClick={() => run("install")}
         disabled={pending}
-        className="btn btn-sm"
+        className="inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {pending ? "Installing…" : "Install card"}
       </button>

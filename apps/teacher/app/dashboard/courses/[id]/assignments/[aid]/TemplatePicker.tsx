@@ -179,7 +179,7 @@ export function TemplatePicker({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           disabled={pending}
-          className="border border-rule rounded px-3 py-2 text-sm min-w-[260px]"
+          className="border border-light-blue rounded px-3 py-2 text-sm min-w-[260px]"
         >
           {!currentKey && <option value="">— pick an agent —</option>}
           {defaultOptions.length > 0 && (
@@ -211,7 +211,7 @@ export function TemplatePicker({
           type="button"
           onClick={save}
           disabled={pending || !draft || draft === currentKey}
-          className="btn bg-maroon text-white px-3 py-2 text-sm disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 text-sm disabled:opacity-50"
         >
           {pending ? "Saving…" : "Apply"}
         </button>
@@ -254,7 +254,7 @@ export function TemplatePicker({
       </div>
 
       {cloneOpen && (
-        <form onSubmit={onClone} className="border-t border-rule pt-3 space-y-2">
+        <form onSubmit={onClone} className="border-t border-light-blue pt-3 space-y-2">
           <label className="block text-xs muted">
             New custom template name (must differ from any default:{" "}
             {defaultNames.map((n) => `"${n}"`).join(", ")})
@@ -265,13 +265,13 @@ export function TemplatePicker({
               onChange={(e) => setCloneName(e.target.value)}
               required
               placeholder="e.g. ChekhovBot — final paper"
-              className="flex-1 border border-rule rounded px-3 py-1.5 text-sm"
+              className="flex-1 border border-light-blue rounded px-3 py-1.5 text-sm"
               autoFocus
             />
             <button
               type="submit"
               disabled={pending || !cloneName.trim()}
-              className="btn bg-maroon text-white px-3 py-1.5 text-xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs disabled:opacity-50"
             >
               {pending ? "Cloning…" : "Clone & open editor"}
             </button>

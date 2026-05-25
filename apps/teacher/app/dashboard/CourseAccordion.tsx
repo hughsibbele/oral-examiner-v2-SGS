@@ -85,7 +85,7 @@ export function CourseAccordion({
   return (
     <section
       className={`rounded border bg-white transition-colors ${
-        open ? "border-maroon/30 shadow-sm" : "border-rule hover:border-stone-300"
+        open ? "border-maroon/30 shadow-sm" : "border-light-blue hover:border-stone-300"
       }`}
     >
       <button
@@ -139,7 +139,7 @@ export function CourseAccordion({
       </button>
 
       {open && (
-        <div className="border-t border-rule">
+        <div className="border-t border-light-blue">
           {assignments.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm muted">
               No assignments cached for this course yet. Click Refresh above.
@@ -147,7 +147,7 @@ export function CourseAccordion({
           ) : (
             <>
               {selectedIds.size > 0 && (
-                <div className="border-b border-rule bg-paper px-4 py-3">
+                <div className="border-b border-light-blue bg-paper px-4 py-3">
                   <BulkActions
                     canvasCourseId={course.canvas_course_id}
                     selectedIds={Array.from(selectedIds)}
@@ -158,13 +158,13 @@ export function CourseAccordion({
                   />
                 </div>
               )}
-              <div className="flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2">
+              <div className="flex flex-wrap items-center gap-3 border-b border-light-blue px-4 py-2">
                 <input
                   type="search"
                   placeholder="Search assignments…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="min-w-[200px] flex-1 rounded border border-rule bg-white px-3 py-1.5 text-sm focus:border-maroon focus:outline-none focus:ring-1 focus:ring-maroon"
+                  className="min-w-[200px] flex-1 rounded border border-light-blue bg-white px-3 py-1.5 text-sm focus:border-maroon focus:outline-none focus:ring-1 focus:ring-maroon"
                 />
                 <span className="text-[11px] muted">
                   {filtered.length === assignments.length
@@ -178,7 +178,7 @@ export function CourseAccordion({
                   No assignments match &ldquo;{search}&rdquo;.
                 </div>
               ) : (
-                <ul className="divide-y divide-rule">
+                <ul className="divide-y divide-light-blue">
                   {filtered.map((a) => (
                     <AssignmentRow
                       key={a.canvas_assignment_id}
@@ -459,7 +459,7 @@ function BulkActions({
               setAgent({ kind, id });
             }}
             disabled={pending}
-            className="rounded border border-rule bg-white px-2 py-1 text-xs"
+            className="rounded border border-light-blue bg-white px-2 py-1 text-xs"
           >
             {defaultAgents.length > 0 && (
               <optgroup label="Default agents">
@@ -523,7 +523,7 @@ function BulkActions({
             type="button"
             onClick={() => run("uninstall")}
             disabled={pending}
-            className="rounded border border-rule px-3 py-1 font-semibold text-ink hover:bg-stone-100 disabled:opacity-50"
+            className="rounded border border-light-blue px-3 py-1 font-semibold text-ink hover:bg-stone-100 disabled:opacity-50"
           >
             {pending ? "Working…" : "Uninstall"}
           </button>
@@ -584,7 +584,7 @@ function DestinationCheckbox({
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        className="h-3.5 w-3.5 rounded border-rule accent-maroon disabled:opacity-50"
+        className="h-3.5 w-3.5 rounded border-light-blue accent-maroon disabled:opacity-50"
       />
       <span className="text-xs">{label}</span>
     </label>
@@ -647,7 +647,7 @@ function RosterFooter({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule bg-paper px-4 py-2 text-[11px]">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-light-blue bg-paper px-4 py-2 text-[11px]">
       <span className="muted">
         Roster:{" "}
         {roster.studentCount === 0
@@ -663,7 +663,7 @@ function RosterFooter({
           type="button"
           onClick={onClick}
           disabled={pending}
-          className="rounded border border-rule bg-white px-2.5 py-1 text-[11px] text-ink hover:border-maroon hover:text-maroon disabled:opacity-50"
+          className="rounded border border-light-blue bg-white px-2.5 py-1 text-[11px] text-ink hover:border-maroon hover:text-maroon disabled:opacity-50"
         >
           {pending ? "Syncing…" : "Refresh roster"}
         </button>

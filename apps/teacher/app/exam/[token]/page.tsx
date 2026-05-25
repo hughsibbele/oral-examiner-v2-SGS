@@ -97,7 +97,7 @@ export default async function ExamPage({
           <h1 className="heading text-2xl">Ready to start your oral defense</h1>
         </header>
 
-        <section className="surface p-5 space-y-3">
+        <section className="bg-white border border-light-blue rounded p-5 space-y-3">
           <div className="text-sm">
             <span className="muted">Your examiner: </span>
             <span className="font-medium">{agentSummary.name}</span>
@@ -118,7 +118,7 @@ export default async function ExamPage({
             )}
           </div>
           {agentSummary.openingText && (
-            <div className="text-sm border-t border-rule pt-3">
+            <div className="text-sm border-t border-light-blue pt-3">
               <div className="muted text-xs mb-1">
                 Your examiner&apos;s first words will be:
               </div>
@@ -129,7 +129,7 @@ export default async function ExamPage({
           )}
         </section>
 
-        <section className="surface p-5 text-sm leading-relaxed space-y-2">
+        <section className="bg-white border border-light-blue rounded p-5 text-sm leading-relaxed space-y-2">
           <h2 className="heading text-base">Before you begin</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
@@ -158,7 +158,7 @@ export default async function ExamPage({
             name="canvas_assignment_id"
             value={canvasAssignmentId}
           />
-          <button type="submit" className="btn btn-primary justify-center py-3">
+          <button type="submit" className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed justify-center py-3">
             Start exam
           </button>
           <p className="muted text-xs text-center">

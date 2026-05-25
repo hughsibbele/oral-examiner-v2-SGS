@@ -100,7 +100,7 @@ export default async function AdminAgentsPage() {
     .maybeSingle();
   if (envelopeErr) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <h1 className="heading text-2xl mb-2">Agents</h1>
         <p className="text-sm">Failed to load safety envelope: {envelopeErr.message}</p>
       </div>
@@ -126,7 +126,7 @@ export default async function AdminAgentsPage() {
     .order("purpose");
   if (systemPromptsErr) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <h1 className="heading text-2xl mb-2">Agents</h1>
         <p className="text-sm">Failed to load system prompts: {systemPromptsErr.message}</p>
       </div>
@@ -142,7 +142,7 @@ export default async function AdminAgentsPage() {
     .order("name");
   if (presetsErr) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <h1 className="heading text-2xl mb-2">Agents</h1>
         <p className="text-sm">Failed to load personas: {presetsErr.message}</p>
       </div>
@@ -158,7 +158,7 @@ export default async function AdminAgentsPage() {
       : { data: [], error: null };
   if (qsetsErr) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <p className="text-sm">Failed to load question sets: {qsetsErr.message}</p>
       </div>
     );
@@ -178,7 +178,7 @@ export default async function AdminAgentsPage() {
       : { data: [], error: null };
   if (bucketsErr) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <p className="text-sm">Failed to load buckets: {bucketsErr.message}</p>
       </div>
     );
@@ -197,7 +197,7 @@ export default async function AdminAgentsPage() {
       : { data: [], error: null };
   if (questionsErr) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <p className="text-sm">Failed to load questions: {questionsErr.message}</p>
       </div>
     );
@@ -261,7 +261,7 @@ export default async function AdminAgentsPage() {
             textareaRows={20}
           />
         ) : (
-          <div className="surface p-4 border-l-4 border-red-700">
+          <div className="bg-white border border-light-blue rounded p-4 border-l-4 border-red-700">
             <p className="text-sm">
               No safety envelope row found. Re-run the seed migration.
             </p>
@@ -301,13 +301,13 @@ export default async function AdminAgentsPage() {
       </div>
 
       {/* Sticky agent picker */}
-      <nav className="sticky top-0 z-10 -mx-6 px-6 py-3 bg-paper border-b border-rule">
+      <nav className="sticky top-0 z-10 -mx-6 px-6 py-3 bg-paper border-b border-light-blue">
         <ul className="flex gap-3 flex-wrap text-sm">
           {agents.map((a) => (
             <li key={a.persona.id}>
               <a
                 href={`#agent-${a.persona.id}`}
-                className="px-3 py-1.5 border border-rule rounded no-underline text-ink hover:border-maroon"
+                className="px-3 py-1.5 border border-light-blue rounded no-underline text-ink hover:border-maroon"
               >
                 {a.persona.name}
               </a>

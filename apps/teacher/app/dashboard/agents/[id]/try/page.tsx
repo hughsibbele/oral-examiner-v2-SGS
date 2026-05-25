@@ -35,7 +35,7 @@ export default async function TryItOutPage({
 
   if (personaErr) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <p className="text-sm">Failed to load persona: {personaErr.message}</p>
       </div>
     );
@@ -43,7 +43,7 @@ export default async function TryItOutPage({
   if (!personaData) notFound();
   if (envelopeErr || !envelopeData) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <p className="text-sm">
           Failed to load safety envelope: {envelopeErr?.message ?? "missing row"}
         </p>
@@ -98,17 +98,17 @@ export default async function TryItOutPage({
         </div>
       </div>
 
-      <details className="surface p-4">
+      <details className="bg-white border border-light-blue rounded p-4">
         <summary className="cursor-pointer text-sm font-medium">
           Assembled system prompt ({systemPrompt.length.toLocaleString()} chars) —
           click to view
         </summary>
-        <pre className="mt-3 text-xs whitespace-pre-wrap font-mono bg-paper border border-rule rounded p-3 leading-relaxed max-h-[60vh] overflow-y-auto">
+        <pre className="mt-3 text-xs whitespace-pre-wrap font-mono bg-paper border border-light-blue rounded p-3 leading-relaxed max-h-[60vh] overflow-y-auto">
           {systemPrompt}
         </pre>
       </details>
 
-      <details className="surface p-4">
+      <details className="bg-white border border-light-blue rounded p-4">
         <summary className="cursor-pointer text-sm font-medium">
           Selected questions this session ({selected.length})
         </summary>

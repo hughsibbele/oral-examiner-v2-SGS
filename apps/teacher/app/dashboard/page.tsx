@@ -322,14 +322,14 @@ function OtherCoursesSection({
   const terms = Array.from(byTerm.entries()).sort(([a], [b]) => b.localeCompare(a));
 
   return (
-    <details className="mt-8 rounded border border-rule bg-paper text-sm">
+    <details className="mt-8 rounded border border-light-blue bg-paper text-sm">
       <summary className="cursor-pointer list-none px-4 py-2.5 text-ink hover:bg-white">
         <span className="inline-flex items-center gap-2">
           <span className="muted">▸</span>
           Other courses ({total} course{total === 1 ? "" : "s"})
         </span>
       </summary>
-      <div className="space-y-4 border-t border-rule px-4 py-3">
+      <div className="space-y-4 border-t border-light-blue px-4 py-3">
         {emptyActive.length > 0 && (
           <div>
             <div className="mb-1 text-[11px] font-medium uppercase tracking-wide muted">
@@ -399,7 +399,7 @@ function OtherCoursesSection({
 
 function FirstSyncPrompt() {
   return (
-    <div className="rounded border border-rule bg-white p-6 text-center text-sm">
+    <div className="rounded border border-light-blue bg-white p-6 text-center text-sm">
       <h2 className="heading text-lg">No courses cached yet</h2>
       <p className="mt-2 muted">
         Click <strong>Refresh from Canvas</strong> above to pull your
@@ -415,14 +415,14 @@ function ConnectCanvasPrompt({ name }: { name: string }) {
       <div>
         <h1 className="heading text-2xl">Welcome{name && `, ${name}`}.</h1>
       </div>
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <h2 className="heading text-lg mb-2">Connect Canvas</h2>
         <p className="text-sm mb-3">
           OE v2 needs a Canvas API token to read your courses + assignments and
           (eventually) post oral-defense submissions on the student&apos;s
           behalf.
         </p>
-        <Link href="/dashboard/canvas" className="btn btn-primary">
+        <Link href="/dashboard/canvas" className="inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed">
           Connect Canvas →
         </Link>
       </div>

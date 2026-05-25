@@ -127,7 +127,7 @@ export function IntakeBlock({
   }
 
   return (
-    <section className="surface p-5 space-y-4">
+    <section className="bg-white border border-light-blue rounded p-5 space-y-4">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
           <h3 className="heading text-lg">Intake</h3>
@@ -146,7 +146,7 @@ export function IntakeBlock({
             <button
               type="button"
               onClick={handleReset}
-              className="btn px-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-0.5 text-xs"
               title={`Re-copy ${resetTargetLabel ?? "defaults"} into this template`}
             >
               reset to defaults
@@ -265,7 +265,7 @@ export function IntakeBlock({
         {intakeConfig.attachments.length === 0 ? (
           <p className="muted text-xs italic">No reference materials yet.</p>
         ) : (
-          <ul className="border border-rule rounded divide-y divide-rule">
+          <ul className="border border-light-blue rounded divide-y divide-light-blue">
             {intakeConfig.attachments.map((att) => (
               <AttachmentRow
                 key={att.id}
@@ -286,9 +286,9 @@ export function IntakeBlock({
             onPick={handleDrivePick}
             mimeTypes={ATTACHMENT_PDF_TYPES}
             label="Pick from Drive"
-            className="btn px-3 py-1.5 text-sm"
+            className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm"
           />
-          <label className="btn px-3 py-1.5 text-sm cursor-pointer">
+          <label className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm cursor-pointer">
             Upload PDF
             <input
               ref={fileInputRef}
@@ -301,7 +301,7 @@ export function IntakeBlock({
           <button
             type="button"
             onClick={() => setShowPaste((v) => !v)}
-            className="btn px-3 py-1.5 text-sm"
+            className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm"
           >
             {showPaste ? "Cancel paste" : "Paste text"}
           </button>
@@ -320,26 +320,26 @@ export function IntakeBlock({
                 return r;
               })
             }
-            className="space-y-2 border border-rule rounded p-3 bg-white"
+            className="space-y-2 border border-light-blue rounded p-3 bg-white"
           >
             <input type="hidden" name="id" value={rowId} />
             <input
               name="name"
               required
               placeholder="Snippet name (e.g. rubric criteria)"
-              className="w-full border border-rule rounded px-3 py-2 text-sm"
+              className="w-full border border-light-blue rounded px-3 py-2 text-sm"
             />
             <textarea
               name="content"
               required
               rows={6}
               placeholder="Paste reference text here…"
-              className="w-full border border-rule rounded px-3 py-2 text-sm font-mono leading-snug"
+              className="w-full border border-light-blue rounded px-3 py-2 text-sm font-mono leading-snug"
             />
             <div className="flex items-center gap-2">
               <button
                 type="submit"
-                className="btn bg-maroon text-white px-3 py-1.5 text-sm"
+                className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm"
               >
                 Add snippet
               </button>
@@ -381,7 +381,7 @@ function AttachmentRow({
       <button
         type="button"
         title="Remove"
-        className="btn px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+        className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs text-red-700 hover:bg-red-50"
         onClick={() => {
           if (!window.confirm(`Remove "${attachment.name}"?`)) return;
           run(del, () => {

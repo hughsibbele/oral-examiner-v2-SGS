@@ -43,7 +43,7 @@ export default async function TemplateTryItOutPage({
 
   if (templateErr) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <p className="text-sm">Failed to load template: {templateErr.message}</p>
       </div>
     );
@@ -51,7 +51,7 @@ export default async function TemplateTryItOutPage({
   if (!templateData) notFound();
   if (envelopeErr || !envelopeData) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <p className="text-sm">
           Failed to load safety envelope: {envelopeErr?.message ?? "missing row"}
         </p>
@@ -125,7 +125,7 @@ export default async function TemplateTryItOutPage({
         >
           ← Edit template
         </Link>
-        <div className="surface p-5 border-l-4 border-red-700 space-y-2">
+        <div className="bg-white border border-light-blue rounded p-5 border-l-4 border-red-700 space-y-2">
           <p className="text-sm font-medium">
             Can&apos;t try this template yet — required field
             {missing.length === 1 ? "" : "s"} blank: {missing.join(", ")}.
@@ -176,17 +176,17 @@ export default async function TemplateTryItOutPage({
         </div>
       </div>
 
-      <details className="surface p-4">
+      <details className="bg-white border border-light-blue rounded p-4">
         <summary className="cursor-pointer text-sm font-medium">
           Assembled system prompt ({systemPrompt.length.toLocaleString()} chars) —
           click to view
         </summary>
-        <pre className="mt-3 text-xs whitespace-pre-wrap font-mono bg-paper border border-rule rounded p-3 leading-relaxed max-h-[60vh] overflow-y-auto">
+        <pre className="mt-3 text-xs whitespace-pre-wrap font-mono bg-paper border border-light-blue rounded p-3 leading-relaxed max-h-[60vh] overflow-y-auto">
           {systemPrompt}
         </pre>
       </details>
 
-      <details className="surface p-4">
+      <details className="bg-white border border-light-blue rounded p-4">
         <summary className="cursor-pointer text-sm font-medium">
           Selected questions this session ({selected.length})
         </summary>

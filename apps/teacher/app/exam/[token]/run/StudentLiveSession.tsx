@@ -665,8 +665,8 @@ export function StudentLiveSession({
   }
 
   return (
-    <section className="surface p-0 overflow-hidden">
-      <header className="px-4 py-3 border-b border-rule flex items-center justify-between gap-4 flex-wrap">
+    <section className="bg-white border border-light-blue rounded p-0 overflow-hidden">
+      <header className="px-4 py-3 border-b border-light-blue flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="heading text-lg">Oral defense with {agentName}</h2>
           <p className="muted text-xs">
@@ -711,12 +711,12 @@ export function StudentLiveSession({
         ))}
       </div>
 
-      <footer className="px-4 py-4 border-t border-rule flex items-center justify-between gap-3 flex-wrap">
+      <footer className="px-4 py-4 border-t border-light-blue flex items-center justify-between gap-3 flex-wrap">
         {status.kind === "idle" || status.kind === "error" ? (
           <button
             type="button"
             onClick={start}
-            className="btn bg-maroon text-white px-5 py-3 text-sm font-medium"
+            className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-5 py-3 text-sm font-medium"
           >
             {status.kind === "error" ? "Try again" : "Start exam"}
           </button>
@@ -727,7 +727,7 @@ export function StudentLiveSession({
             disabled={
               status.kind === "starting" || status.kind === "stopping"
             }
-            className="btn bg-maroon text-white px-5 py-3 text-sm font-medium disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-5 py-3 text-sm font-medium disabled:opacity-50"
           >
             {status.kind === "stopping" ? "Ending…" : "End exam"}
           </button>
@@ -805,7 +805,7 @@ function Bubble({
     <div className={`flex ${isAgent ? "justify-start" : "justify-end"}`}>
       <div
         className={`max-w-[80%] rounded-lg px-3 py-2 ${
-          isAgent ? "bg-white border border-rule" : "bg-maroon text-white"
+          isAgent ? "bg-white border border-light-blue" : "bg-maroon text-white"
         }`}
       >
         <div className={`text-xs mb-1 ${isAgent ? "muted" : "text-white/80"}`}>

@@ -1,94 +1,68 @@
 @import "tailwindcss";
 
-/* EHS brand palette — adapted from AI Documenter v2's globals.css.
-   Maroon for primary, dark blue for secondary, paper/ink for surfaces. */
-:root {
-  --maroon:        #7a1e46;
-  --maroon-dark:   #5a1535;
-  --cool-gray:     #54565b;
-  --light-blue:    #c4dceb;
-  --dark-blue:     #006890;
-  --dark-blue-dark:#004f6e;
-  --paper:         #fafaf7;
-  --ink:           #1a1a1a;
-  --rule:          #d8d6cf;
-  --muted:         #76746e;
+/* EHS brand tokens — canonical palette shared across the super-grader
+ * suite. These values mirror the school style guide. */
+@theme {
+  --color-maroon: #7a1e46;
+  --color-maroon-dark: #5a1535;
+  --color-cool-gray: #54565b;
+  --color-light-blue: #c4dceb;
+  --color-dark-blue: #006890;
+  --color-dark-blue-dark: #004f6e;
+  --color-paper: #fafaf7;
+  --color-ink: #1a1a1a;
+
+  --font-display: var(--font-lora), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-lora), Georgia, "Times New Roman", serif;
+  --font-document: Georgia, "Times New Roman", serif;
 }
 
-@theme inline {
-  --color-background: var(--paper);
-  --color-foreground: var(--ink);
-  --color-maroon: var(--maroon);
-  --color-maroon-dark: var(--maroon-dark);
-  --color-cool-gray: var(--cool-gray);
-  --color-light-blue: var(--light-blue);
-  --color-dark-blue: var(--dark-blue);
-  --color-dark-blue-dark: var(--dark-blue-dark);
-  --color-paper: var(--paper);
-  --color-ink: var(--ink);
-  --color-rule: var(--rule);
-  --color-muted: var(--muted);
-  --font-display: "Lora", Georgia, "Times New Roman", serif;
-  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+:root {
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  color-scheme: light;
 }
 
 html, body {
-  background: var(--paper);
-  color: var(--ink);
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
   font-family: var(--font-body);
+  font-feature-settings: "kern", "liga", "calt";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-::selection { background: var(--light-blue); color: var(--ink); }
+::selection { background: var(--color-light-blue); color: var(--color-ink); }
 
-a { color: var(--dark-blue); text-underline-offset: 3px; }
-a:hover { color: var(--dark-blue-dark); }
-
-.heading {
-  font-family: var(--font-display);
-  color: var(--ink);
-  font-weight: 500;
-  letter-spacing: -0.01em;
+/* EHS editorial ornaments — shared across the suite. */
+.ehs-rule {
+  display: block;
+  height: 1px;
+  background: var(--color-light-blue);
+  border: 0;
 }
-
-.muted { color: var(--muted); }
-.rule  { border-color: var(--rule); }
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.4rem 0.85rem;
-  background: transparent;
-  color: var(--ink);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: border-color 80ms, color 80ms, background 80ms;
+.ehs-rule-maroon {
+  display: block;
+  height: 2px;
+  background: var(--color-maroon);
+  border: 0;
 }
-.btn:hover:not(:disabled) {
-  border-color: var(--maroon);
-  color: var(--maroon);
-}
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.btn-primary {
-  background: var(--maroon);
-  color: var(--paper);
-  border-color: var(--maroon);
-}
-.btn-primary:hover:not(:disabled) {
-  background: var(--maroon-dark);
-  color: var(--paper);
-  border-color: var(--maroon-dark);
+.ehs-eyebrow {
+  font-family: var(--font-document);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-cool-gray);
 }
 
-.surface {
-  background: white;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
+/* Focus rings — maroon at 60% opacity, no blue browser default. */
+*:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--color-maroon) 60%, transparent);
+  outline-offset: 2px;
+  border-radius: 2px;
 }

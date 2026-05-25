@@ -158,7 +158,7 @@ export default async function AssignmentConfigurePage({
         <p className="muted text-sm mt-1">Canvas assignment {canvasAssignmentId}</p>
       </div>
 
-      <section className="surface p-5">
+      <section className="bg-white border border-light-blue rounded p-5">
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="heading text-lg">Agent template</h2>
           {binding && (
@@ -177,7 +177,7 @@ export default async function AssignmentConfigurePage({
         />
       </section>
 
-      <section className="surface p-5 space-y-3">
+      <section className="bg-white border border-light-blue rounded p-5 space-y-3">
         <div className="flex items-baseline justify-between">
           <h2 className="heading text-lg">Canvas card</h2>
           <InstallCardButton

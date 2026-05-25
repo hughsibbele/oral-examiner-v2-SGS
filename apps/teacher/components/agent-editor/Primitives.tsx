@@ -44,7 +44,7 @@ export function SaveRow({
     <div className="flex items-center gap-3">
       <button
         type="submit"
-        className={`btn bg-maroon text-white ${
+        className={`inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed ${
           small ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm"
         }`}
       >
@@ -85,7 +85,7 @@ export function MoveButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="btn px-2 py-1 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+      className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
     >
       {label}
     </button>
@@ -110,7 +110,7 @@ export function DeleteButton({
       onClick={() => {
         if (window.confirm(confirm)) onConfirm();
       }}
-      className="btn px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+      className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs text-red-700 hover:bg-red-50"
     >
       {label}
     </button>
@@ -169,7 +169,7 @@ export function InheritIndicator({
                   return resetField(fd);
                 });
               }}
-              className="btn px-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-0.5 text-xs"
             >
               reset to default
             </button>

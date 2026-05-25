@@ -67,7 +67,7 @@ export function CustomTemplateRow({
   }
 
   return (
-    <li className="rounded border border-rule bg-white">
+    <li className="rounded border border-light-blue bg-white">
       <div className="flex items-baseline justify-between gap-3 p-3">
         <button
           type="button"
@@ -109,7 +109,7 @@ export function CustomTemplateRow({
         </div>
       </div>
       {open && (
-        <div className="border-t border-rule p-3 space-y-3 bg-paper">
+        <div className="border-t border-light-blue p-3 space-y-3 bg-paper">
           <form onSubmit={onRename} className="flex items-end gap-2">
             <input type="hidden" name="id" value={template.id} />
             <div className="flex-1">
@@ -118,13 +118,13 @@ export function CustomTemplateRow({
                 name="name"
                 defaultValue={template.name}
                 required
-                className="w-full border border-rule rounded px-3 py-1.5 text-sm"
+                className="w-full border border-light-blue rounded px-3 py-1.5 text-sm"
               />
             </div>
             <button
               type="submit"
               disabled={pending}
-              className="btn px-3 py-1.5 text-xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs disabled:opacity-50"
             >
               {pending ? "Saving…" : "Rename"}
             </button>

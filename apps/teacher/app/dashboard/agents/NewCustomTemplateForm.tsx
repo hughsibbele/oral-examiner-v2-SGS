@@ -43,7 +43,7 @@ export function NewCustomTemplateForm({
           required
           minLength={1}
           placeholder="e.g. Final paper · close reading"
-          className="w-full border border-rule rounded px-3 py-2 text-sm"
+          className="w-full border border-light-blue rounded px-3 py-2 text-sm"
         />
         <p className="muted text-[10px] mt-1">
           Must differ from any default name:{" "}
@@ -56,7 +56,7 @@ export function NewCustomTemplateForm({
         <select
           value={pick}
           onChange={(e) => setPick(e.target.value)}
-          className="w-full border border-rule rounded px-3 py-2 text-sm"
+          className="w-full border border-light-blue rounded px-3 py-2 text-sm"
           disabled={sources.length === 0}
         >
           {sources.map((s) => (
@@ -80,7 +80,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="btn bg-maroon text-white px-4 py-2 text-sm disabled:opacity-50"
+      className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 text-sm disabled:opacity-50"
     >
       {pending ? "Cloning…" : "Create custom template"}
     </button>

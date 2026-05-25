@@ -53,7 +53,7 @@ export default async function CanvasSetupPage() {
       </div>
 
       {hasToken && (
-        <div className="surface p-4 text-sm">
+        <div className="bg-white border border-light-blue rounded p-4 text-sm">
           <span className="font-medium">✓ Canvas connected</span>
           <span className="muted ml-2">
             Host: <code>{teacher.canvas_host}</code>. Token encrypted at rest.
@@ -68,7 +68,7 @@ export default async function CanvasSetupPage() {
           milestone (M7.6 dropped the configurable-template approach
           2026-05-24 — see the move-the-folder copy below for the
           replacement workflow). */}
-      <section className="surface p-4 text-sm space-y-3">
+      <section className="bg-white border border-light-blue rounded p-4 text-sm space-y-3">
         <h2 className="font-medium">Google Drive</h2>
         <p className="muted text-xs">
           <strong>Want everything in a shared folder?</strong> Drag the{" "}
@@ -126,7 +126,7 @@ export default async function CanvasSetupPage() {
         </dl>
         {!driveConnected && (
           <form action="/auth/signout" method="post">
-            <button type="submit" className="btn">
+            <button type="submit" className="inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed">
               Sign out to reconnect
             </button>
           </form>
@@ -137,7 +137,7 @@ export default async function CanvasSetupPage() {
           comment writes; per-assignment override stays on
           exam_template_bindings.post_to_canvas_comment. */}
       {teacher && (
-        <section className="surface p-4 text-sm space-y-3">
+        <section className="bg-white border border-light-blue rounded p-4 text-sm space-y-3">
           <h2 className="font-medium">Canvas posting</h2>
           <p className="muted text-xs">
             When an exam finishes evaluating, OE can post a draft comment
@@ -161,7 +161,7 @@ export default async function CanvasSetupPage() {
         />
       )}
 
-      <section className="surface p-4 text-sm space-y-2">
+      <section className="bg-white border border-light-blue rounded p-4 text-sm space-y-2">
         <h2 className="font-medium">How to get a Canvas API token</h2>
         <ol className="list-decimal list-inside space-y-1 muted">
           <li>Open Canvas → Account → Settings.</li>

@@ -15,7 +15,7 @@ export function RefreshButton() {
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className="inline-flex items-center gap-1.5 rounded border border-rule bg-white px-3 py-1.5 text-xs text-ink transition-colors hover:border-maroon hover:text-maroon disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex items-center gap-1.5 rounded border border-light-blue bg-white px-3 py-1.5 text-xs text-ink transition-colors hover:border-maroon hover:text-maroon disabled:cursor-not-allowed disabled:opacity-60"
       title="Pull the latest courses + active-term assignments from Canvas"
     >
       {pending && <Spinner />}

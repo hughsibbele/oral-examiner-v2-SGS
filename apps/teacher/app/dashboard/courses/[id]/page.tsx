@@ -101,7 +101,7 @@ export default async function CoursePage({
         </p>
       </div>
 
-      <section className="surface p-5">
+      <section className="bg-white border border-light-blue rounded p-5">
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="heading text-lg">Assignments</h2>
           <RefreshAssignmentsButton canvasCourseId={canvasCourseId} />
@@ -112,7 +112,7 @@ export default async function CoursePage({
             No assignments cached yet. Refresh from Canvas to populate.
           </p>
         ) : (
-          <ul className="divide-y divide-rule border border-rule rounded">
+          <ul className="divide-y divide-light-blue border border-light-blue rounded">
             {assignments.map((row) => {
               const a = row.payload;
               const due = a.due_at ? new Date(a.due_at).toLocaleDateString() : "—";
@@ -176,7 +176,7 @@ export default async function CoursePage({
         </p>
       </section>
 
-      <section className="surface p-5">
+      <section className="bg-white border border-light-blue rounded p-5">
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="heading text-lg">Roster</h2>
           <RefreshRosterButton canvasCourseId={canvasCourseId} />

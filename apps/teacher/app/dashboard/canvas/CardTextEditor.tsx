@@ -78,7 +78,7 @@ export function CardTextEditor({
   }
 
   return (
-    <section className="surface p-5 space-y-4">
+    <section className="bg-white border border-light-blue rounded p-5 space-y-4">
       <div>
         <h2 className="font-medium">Canvas card text</h2>
         <p className="muted text-xs mt-1">
@@ -135,7 +135,7 @@ export function CardTextEditor({
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              className="btn bg-maroon text-white px-4 py-2 text-sm"
+              className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 text-sm"
             >
               {status === "saving" ? "Saving…" : "Save card text"}
             </button>
@@ -203,7 +203,7 @@ function Field({
           onChange={(e) => setValue(e.target.value)}
           rows={4}
           placeholder={placeholder}
-          className="w-full border border-rule rounded px-3 py-2 text-sm leading-snug"
+          className="w-full border border-light-blue rounded px-3 py-2 text-sm leading-snug"
         />
       ) : (
         <input
@@ -212,7 +212,7 @@ function Field({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
-          className="w-full border border-rule rounded px-3 py-2 text-sm"
+          className="w-full border border-light-blue rounded px-3 py-2 text-sm"
         />
       )}
       <p className="muted text-xs mt-1">

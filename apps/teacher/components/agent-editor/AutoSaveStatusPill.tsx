@@ -57,7 +57,7 @@ export function AutoSaveStatusPill({ status }: { status: AutoSaveStatus }) {
 
   if (status.kind === "saving") {
     return (
-      <Pill cls="bg-white text-ink border-rule">
+      <Pill cls="bg-white text-ink border-light-blue">
         <Spinner /> Saving…
       </Pill>
     );

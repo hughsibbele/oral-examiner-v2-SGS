@@ -36,7 +36,7 @@ export function CanvasTokenForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="surface p-5 space-y-4">
+    <form onSubmit={onSubmit} className="bg-white border border-light-blue rounded p-5 space-y-4">
       <h2 className="heading text-lg">
         {hasExisting ? "Update Canvas token" : "Connect Canvas"}
       </h2>
@@ -52,7 +52,7 @@ export function CanvasTokenForm({
           onChange={(e) => setHost(e.target.value)}
           placeholder="episcopalhighschool.instructure.com"
           required
-          className="w-full px-3 py-1.5 border border-rule rounded text-sm"
+          className="w-full px-3 py-1.5 border border-light-blue rounded text-sm"
         />
         <p className="muted text-xs">
           The hostname only — no <code>https://</code>, no path.
@@ -70,7 +70,7 @@ export function CanvasTokenForm({
           onChange={(e) => setToken(e.target.value)}
           placeholder={hasExisting ? "(unchanged unless you paste a new one)" : ""}
           required={!hasExisting}
-          className="w-full px-3 py-1.5 border border-rule rounded text-sm font-mono"
+          className="w-full px-3 py-1.5 border border-light-blue rounded text-sm font-mono"
         />
       </div>
 
@@ -91,7 +91,7 @@ export function CanvasTokenForm({
         <button
           type="submit"
           disabled={pending || (!hasExisting && (!host || !token))}
-          className="btn btn-primary"
+          className="inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {pending ? "Verifying…" : hasExisting ? "Update connection" : "Connect"}
         </button>

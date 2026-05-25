@@ -14,26 +14,61 @@ export default async function DashboardLayout({
 
   const showAdminLink = await isAdmin();
 
+  const nav = (
+    <nav className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2 text-sm">
+      <Link
+        href="/dashboard"
+        className="text-ink transition-colors hover:text-maroon"
+      >
+        Dashboard
+      </Link>
+      <Link
+        href="/dashboard/agents"
+        className="text-ink transition-colors hover:text-maroon"
+      >
+        Agents
+      </Link>
+      <Link
+        href="/dashboard/canvas"
+        className="text-ink transition-colors hover:text-maroon"
+      >
+        Canvas &amp; Drive
+      </Link>
+      {showAdminLink && (
+        <Link
+          href="/admin"
+          className="rounded-sm border border-dark-blue/40 px-2 py-0.5 text-xs font-medium text-dark-blue transition-colors hover:bg-dark-blue hover:text-white"
+          title="School-wide admin console"
+        >
+          Admin →
+        </Link>
+      )}
+      <span
+        className="text-xs italic text-cool-gray"
+        title={result.teacher.email}
+      >
+        {result.teacher.display_name}
+      </span>
+      <form action="/auth/signout" method="post">
+        <button
+          type="submit"
+          className="text-xs italic text-cool-gray transition-colors hover:text-maroon"
+        >
+          Sign out
+        </button>
+      </form>
+    </nav>
+  );
+
   return (
-    <>
-      <BrandHeader
-        eyebrow="Episcopal High School"
-        title="Oral Examiner"
-        nav={
-          <>
-            <Link href="/dashboard">Dashboard</Link>
-            <Link href="/dashboard/agents">Agent Templates</Link>
-            <Link href="/dashboard/canvas">Canvas &amp; Drive setup</Link>
-            {showAdminLink && <Link href="/admin">Admin</Link>}
-            <form action="/auth/signout" method="post" className="inline">
-              <button type="submit" className="btn">
-                Sign out
-              </button>
-            </form>
-          </>
-        }
-      />
-      <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
-    </>
+    <div className="flex min-h-screen flex-col bg-paper">
+      <BrandHeader logoHref="/dashboard" right={nav} />
+
+      <main className="flex-1 px-6 py-8">{children}</main>
+
+      <footer className="border-t border-light-blue/40 bg-white/50 px-6 py-3 text-center text-xs italic text-cool-gray">
+        Oral Examiner &middot; Episcopal High School
+      </footer>
+    </div>
   );
 }

@@ -306,7 +306,7 @@ function AgentCard({
             tagStatus={tagStatus}
           />
         ) : (
-          <div className="surface p-5">
+          <div className="bg-white border border-light-blue rounded p-5">
             <p className="text-sm muted">
               No default question set linked. Edit the persona row in SQL to set{" "}
               <code>default_question_set_id</code>.

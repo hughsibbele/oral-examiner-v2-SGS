@@ -48,7 +48,7 @@ export function DefaultAgentCard({
   }
 
   return (
-    <div className="surface p-5">
+    <div className="bg-white border border-light-blue rounded p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="heading text-base">{preset.name}</h3>
         {preset.live_voice_name && (
@@ -89,7 +89,7 @@ export function DefaultAgentCard({
       </div>
 
       {open && (
-        <form onSubmit={onClone} className="mt-3 space-y-2 border-t border-rule pt-3">
+        <form onSubmit={onClone} className="mt-3 space-y-2 border-t border-light-blue pt-3">
           <label className="block text-xs muted">
             Name your custom template (must differ from &ldquo;{preset.name}&rdquo;)
           </label>
@@ -99,13 +99,13 @@ export function DefaultAgentCard({
               onChange={(e) => setNewName(e.target.value)}
               required
               placeholder={`e.g. ${preset.name} — close reading`}
-              className="flex-1 border border-rule rounded px-3 py-1.5 text-sm"
+              className="flex-1 border border-light-blue rounded px-3 py-1.5 text-sm"
               autoFocus
             />
             <button
               type="submit"
               disabled={pending || !newName.trim()}
-              className="btn bg-maroon text-white px-3 py-1.5 text-xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs disabled:opacity-50"
             >
               {pending ? "Cloning…" : "Clone"}
             </button>

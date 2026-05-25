@@ -64,7 +64,7 @@ function Tile({
   hint: string;
 }) {
   return (
-    <Link href={href} className="surface p-4 block no-underline text-ink hover:border-maroon">
+    <Link href={href} className="bg-white border border-light-blue rounded p-4 block no-underline text-ink hover:border-maroon">
       <div className="muted text-xs uppercase tracking-wider">{label}</div>
       <div className="heading text-3xl mt-1">{value}</div>
       <div className="muted text-xs mt-2">{hint}</div>

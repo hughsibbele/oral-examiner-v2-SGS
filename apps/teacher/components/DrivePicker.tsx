@@ -38,7 +38,7 @@ type Props = {
   mode?: DrivePickerMode;
   /** Button label. Defaults to "Pick from Drive". */
   label?: string;
-  /** className passthrough — falls back to the project's `btn` styling. */
+  /** className passthrough — falls back to default outline button styling. */
   className?: string;
   /** Disable the button (e.g. while parent is saving). */
   disabled?: boolean;
@@ -279,7 +279,7 @@ export function DrivePicker({
         type="button"
         onClick={open}
         disabled={busy || disabled}
-        className={className ?? "btn"}
+        className={className ?? "inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed"}
       >
         {busy
           ? "Loading…"

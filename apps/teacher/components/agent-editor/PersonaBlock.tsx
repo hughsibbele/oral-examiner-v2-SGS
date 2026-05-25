@@ -95,7 +95,7 @@ export function PersonaBlock(props: {
       ref={formRef}
       onSubmit={(e) => e.preventDefault()}
       data-track-dirty
-      className="surface p-5 space-y-4"
+      className="bg-white border border-light-blue rounded p-5 space-y-4"
     >
       <input type="hidden" name="id" value={rowId} />
       <div className="flex items-baseline justify-between">
@@ -110,14 +110,14 @@ export function PersonaBlock(props: {
               name="name"
               defaultValue={values.name ?? ""}
               required
-              className="w-full border border-rule rounded px-3 py-2 text-sm font-medium"
+              className="w-full border border-light-blue rounded px-3 py-2 text-sm font-medium"
             />
           </Field>
           <Field label="Description">
             <input
               name="description"
               defaultValue={values.description ?? ""}
-              className="w-full border border-rule rounded px-3 py-2 text-sm"
+              className="w-full border border-light-blue rounded px-3 py-2 text-sm"
             />
           </Field>
           <Field label="Live voice">
@@ -156,7 +156,7 @@ export function PersonaBlock(props: {
               ? "(leave empty to inherit from the preset's persona body)"
               : undefined
           }
-          className="w-full border border-rule rounded px-3 py-2 text-xs font-mono leading-relaxed"
+          className="w-full border border-light-blue rounded px-3 py-2 text-xs font-mono leading-relaxed"
         />
         {mode === "template" && (
           <InheritIndicator
@@ -186,7 +186,7 @@ export function PersonaBlock(props: {
             defaultValue={values.opening_text ?? ""}
             rows={3}
             placeholder='e.g. "Good afternoon, dear student. I am ChekhovBot, here to discuss your essay…"'
-            className="w-full border border-rule rounded px-3 py-2 text-sm"
+            className="w-full border border-light-blue rounded px-3 py-2 text-sm"
           />
           {mode === "template" && (
             <InheritIndicator
@@ -210,7 +210,7 @@ export function PersonaBlock(props: {
             defaultValue={values.closing_text ?? ""}
             rows={3}
             placeholder='e.g. "Thank you. Until next we meet by the cherry orchard…"'
-            className="w-full border border-rule rounded px-3 py-2 text-sm"
+            className="w-full border border-light-blue rounded px-3 py-2 text-sm"
           />
           {mode === "template" && (
             <InheritIndicator
@@ -239,7 +239,7 @@ function VoiceSelect({ defaultValue }: { defaultValue: string }) {
     <select
       name="live_voice_name"
       defaultValue={defaultValue}
-      className="w-full border border-rule rounded px-3 py-2 text-sm"
+      className="w-full border border-light-blue rounded px-3 py-2 text-sm"
     >
       <option value="">(default — inherit / first available)</option>
       {LIVE_VOICES.map((v) => (

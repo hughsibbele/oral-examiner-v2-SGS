@@ -427,8 +427,8 @@ export function TryItOut({
   const canStart = status.kind === "idle" || status.kind === "ended" || status.kind === "error";
 
   return (
-    <section className="surface p-0 overflow-hidden">
-      <header className="px-4 py-3 border-b border-rule flex items-center justify-between gap-4 flex-wrap">
+    <section className="bg-white border border-light-blue rounded p-0 overflow-hidden">
+      <header className="px-4 py-3 border-b border-light-blue flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="heading text-lg">Talk to {agentName}</h2>
           <p className="muted text-xs">
@@ -464,7 +464,7 @@ export function TryItOut({
             <button
               type="button"
               onClick={start}
-              className="btn bg-maroon text-white px-4 py-2 text-sm"
+              className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 text-sm"
             >
               {status.kind === "ended" || status.kind === "error" ? "Start again" : "Start talking"}
             </button>
@@ -473,7 +473,7 @@ export function TryItOut({
               type="button"
               onClick={stop}
               disabled={status.kind === "starting" || status.kind === "stopping"}
-              className="btn px-4 py-2 text-sm disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 text-sm disabled:opacity-50"
             >
               {status.kind === "stopping" ? "Stopping…" : "Stop"}
             </button>
@@ -505,7 +505,7 @@ export function TryItOut({
         </div>
       )}
       {status.kind === "ended" && (
-        <div className="px-4 py-3 muted text-xs border-t border-rule">
+        <div className="px-4 py-3 muted text-xs border-t border-light-blue">
           Session ended ({status.reason}). Click <strong>Start again</strong> to retry
           {adminBypass
             ? "."
@@ -554,7 +554,7 @@ function Bubble({
     <div className={`flex ${isAgent ? "justify-start" : "justify-end"}`}>
       <div
         className={`max-w-[80%] rounded-lg px-3 py-2 ${
-          isAgent ? "bg-white border border-rule" : "bg-maroon text-white"
+          isAgent ? "bg-white border border-light-blue" : "bg-maroon text-white"
         }`}
       >
         <div className={`text-xs mb-1 ${isAgent ? "muted" : "text-white/80"}`}>

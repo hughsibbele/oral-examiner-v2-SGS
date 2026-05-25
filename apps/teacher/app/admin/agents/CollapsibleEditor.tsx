@@ -45,7 +45,7 @@ export function CollapsibleEditor({
   }
 
   return (
-    <section className="surface p-4 border-l-4 border-maroon">
+    <section className="bg-white border border-light-blue rounded p-4 border-l-4 border-maroon">
       <header className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <h3 className="heading text-lg">{title}</h3>
@@ -58,7 +58,7 @@ export function CollapsibleEditor({
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
-            className="btn px-3 py-1 text-xs"
+            className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1 text-xs"
           >
             {open ? "Collapse" : "Edit"}
           </button>
@@ -75,12 +75,12 @@ export function CollapsibleEditor({
             defaultValue={body}
             required
             rows={textareaRows}
-            className="w-full border border-rule rounded px-3 py-2 text-xs font-mono leading-relaxed"
+            className="w-full border border-light-blue rounded px-3 py-2 text-xs font-mono leading-relaxed"
           />
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              className="btn bg-maroon text-white px-4 py-2 text-sm"
+              className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 text-sm"
               disabled={status === "saving"}
             >
               {status === "saving" ? "Saving…" : "Save"}
