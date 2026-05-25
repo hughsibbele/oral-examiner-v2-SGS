@@ -24,10 +24,6 @@ export type Teacher = {
   gemini_live_daily_cap_minutes: number | null;
   gemini_live_dryrun_daily_cap_minutes: number | null;
   gemini_text_daily_cap: number | null;
-  // M7.1 / M7.2 — Google OAuth tokens at rest + Drive folder + Canvas-
-  // comment master switch.
-  google_access_token: string | null;
-  google_refresh_token: string | null;
   google_access_token_encrypted: string | null;
   google_refresh_token_encrypted: string | null;
   google_token_expires_at: string | null;
@@ -117,10 +113,6 @@ export async function ensureTeacherForUser(
   // Google access tokens are 1h; expire ours at 55min so the refresh helper
   // kicks in a comfortable margin before Google's boundary.
   //
-  // M7.1 — encrypt before write. Plaintext columns get nulled so the row
-  // converges to encrypted-only over time (HH M6.22 Phase 0b shape).
-  // Fail loud when the env key is missing — silent plaintext fallback
-  // would re-open the at-rest leak this work closes.
   const tokenUpdates: Record<string, string | null> = {};
   if (tokens?.access_token || tokens?.refresh_token) {
     const key = readGoogleTokenKeyFromEnv();
@@ -129,7 +121,6 @@ export async function ensureTeacherForUser(
         tokens.access_token,
         key,
       );
-      tokenUpdates.google_access_token = null;
       tokenUpdates.google_token_expires_at = new Date(
         Date.now() + 55 * 60 * 1000,
       ).toISOString();
@@ -139,7 +130,6 @@ export async function ensureTeacherForUser(
         tokens.refresh_token,
         key,
       );
-      tokenUpdates.google_refresh_token = null;
     }
   }
 

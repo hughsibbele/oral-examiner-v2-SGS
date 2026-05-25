@@ -53,13 +53,11 @@ function readGoogleTokenKeyFromEnv(): string {
  * because a silent fallback to "use plaintext" would re-open the at-rest
  * leak M7.1 closes.
  */
-function readEncryptedOrLegacy(
+function readEncrypted(
   encrypted: string | null,
-  legacy: string | null,
   key: string,
 ): string | null {
   if (encrypted) return decryptSecret(encrypted, key);
-  if (legacy) return legacy;
   return null;
 }
 
@@ -79,7 +77,7 @@ export async function getTeacherGoogleClient(
   const { data: teacher, error } = await admin
     .from("teachers")
     .select(
-      "google_access_token, google_refresh_token, google_access_token_encrypted, google_refresh_token_encrypted, google_token_expires_at",
+      "google_access_token_encrypted, google_refresh_token_encrypted, google_token_expires_at",
     )
     .eq("id", teacherId)
     .maybeSingle();
@@ -87,14 +85,12 @@ export async function getTeacherGoogleClient(
   if (!teacher) throw new GoogleAuthError("Teacher not found.", "not_found");
 
   const key = readGoogleTokenKeyFromEnv();
-  const accessToken = readEncryptedOrLegacy(
+  const accessToken = readEncrypted(
     teacher.google_access_token_encrypted,
-    teacher.google_access_token,
     key,
   );
-  const refreshToken = readEncryptedOrLegacy(
+  const refreshToken = readEncrypted(
     teacher.google_refresh_token_encrypted,
-    teacher.google_refresh_token,
     key,
   );
 
@@ -130,8 +126,6 @@ export async function getTeacherGoogleClient(
     const newExpiresAt = credentials.expiry_date
       ? new Date(credentials.expiry_date).toISOString()
       : new Date(Date.now() + 55 * 60 * 1000).toISOString();
-    // Encrypt-on-write and null the plaintext columns so the row converges
-    // to encrypted-only over time. M7.1.
     await admin
       .from("teachers")
       .update({
@@ -139,7 +133,6 @@ export async function getTeacherGoogleClient(
           credentials.access_token,
           key,
         ),
-        google_access_token: null,
         google_token_expires_at: newExpiresAt,
         ...(credentials.refresh_token
           ? {
@@ -147,7 +140,6 @@ export async function getTeacherGoogleClient(
                 credentials.refresh_token,
                 key,
               ),
-              google_refresh_token: null,
             }
           : {}),
       })

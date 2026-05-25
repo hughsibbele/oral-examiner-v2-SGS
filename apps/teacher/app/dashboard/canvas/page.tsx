@@ -23,13 +23,10 @@ export default async function CanvasSetupPage() {
       ])
     : [null, null];
 
-  // M7.2 — Drive connection status. OE's tokens land encrypted (M7.1);
-  // legacy plaintext columns still readable until backfill completes.
-  // Either shape indicates a connection.
   const driveConnected = Boolean(
     teacher &&
-      (teacher.google_access_token_encrypted ?? teacher.google_access_token) &&
-      (teacher.google_refresh_token_encrypted ?? teacher.google_refresh_token),
+      teacher.google_access_token_encrypted &&
+      teacher.google_refresh_token_encrypted,
   );
   const driveFolderUrl = teacher?.drive_folder_id
     ? `https://drive.google.com/drive/folders/${teacher.drive_folder_id}`
