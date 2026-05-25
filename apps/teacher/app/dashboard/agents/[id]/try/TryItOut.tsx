@@ -34,10 +34,16 @@ export function TryItOut({
   systemPrompt,
   agentName,
   voiceName,
+  evalPromptBody,
+  rubricBody,
+  summaryPromptBody,
 }: {
   systemPrompt: string;
   agentName: string;
   voiceName: string | null;
+  evalPromptBody?: string | null;
+  rubricBody?: string | null;
+  summaryPromptBody?: string;
 }) {
   const [status, setStatus] = useState<Conversation>({ kind: "idle" });
   const [vad, setVad] = useState<VadState>("listening");
@@ -512,6 +518,14 @@ export function TryItOut({
             : " (uses another reservation against your daily cap)."}
         </div>
       )}
+      {status.kind === "ended" && transcript.length > 0 && summaryPromptBody && (
+        <EvalPreviewPanel
+          transcript={transcript}
+          evalPromptBody={evalPromptBody ?? null}
+          rubricBody={rubricBody ?? null}
+          summaryPromptBody={summaryPromptBody}
+        />
+      )}
     </section>
   );
 }
@@ -606,4 +620,89 @@ function base64ToInt16(b64: string): Int16Array {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+}
+
+function EvalPreviewPanel({
+  transcript,
+  evalPromptBody,
+  rubricBody,
+  summaryPromptBody,
+}: {
+  transcript: TranscriptLine[];
+  evalPromptBody: string | null;
+  rubricBody: string | null;
+  summaryPromptBody: string;
+}) {
+  const [state, setState] = useState<
+    | { kind: "idle" }
+    | { kind: "loading" }
+    | { kind: "done"; evalText: string | null; studentSummary: string }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  async function run() {
+    setState({ kind: "loading" });
+    const { generateEvalPreview } = await import("./generate-eval-preview");
+    const result = await generateEvalPreview({
+      transcript,
+      evalPromptBody,
+      rubricBody,
+      summaryPromptBody,
+    });
+    if (result.ok) {
+      setState({
+        kind: "done",
+        evalText: result.evalText,
+        studentSummary: result.studentSummary,
+      });
+    } else {
+      setState({ kind: "error", message: result.error });
+    }
+  }
+
+  return (
+    <section className="border-t border-light-blue px-4 py-4 space-y-3">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-sm font-medium">Preview eval + summary</h3>
+        {state.kind === "idle" && (
+          <button
+            type="button"
+            onClick={run}
+            className="rounded border border-maroon px-3 py-1 text-xs font-medium text-maroon hover:bg-maroon hover:text-white transition-colors"
+          >
+            Generate
+          </button>
+        )}
+        {state.kind === "loading" && (
+          <span className="text-xs muted animate-pulse">Running Gemini eval…</span>
+        )}
+      </div>
+      {state.kind === "done" && (
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs font-medium mb-1">Student summary</p>
+            <pre className="text-xs whitespace-pre-wrap bg-paper border border-light-blue rounded p-3 leading-relaxed max-h-40 overflow-y-auto">
+              {state.studentSummary}
+            </pre>
+          </div>
+          {state.evalText && (
+            <div>
+              <p className="text-xs font-medium mb-1">Evaluation</p>
+              <pre className="text-xs whitespace-pre-wrap bg-paper border border-light-blue rounded p-3 leading-relaxed max-h-60 overflow-y-auto">
+                {state.evalText}
+              </pre>
+            </div>
+          )}
+          {!state.evalText && (
+            <p className="text-xs muted">
+              No evaluation generated — this agent is ungraded (no eval prompt).
+            </p>
+          )}
+        </div>
+      )}
+      {state.kind === "error" && (
+        <p className="text-xs text-red-700">{state.message}</p>
+      )}
+    </section>
+  );
 }

@@ -30,16 +30,24 @@ export default async function TemplateTryItOutPage({
   const [
     { data: templateData, error: templateErr },
     { data: envelopeData, error: envelopeErr },
+    { data: summaryPromptData },
   ] = await Promise.all([
     supabase
       .from("exam_templates")
       .select(
-        "id, name, personality_preset_id, question_set_id, persona_body, flow_body, follow_up_depth, personalization_enabled, live_voice_name, opening_text, closing_text",
+        "id, name, personality_preset_id, question_set_id, persona_body, flow_body, follow_up_depth, personalization_enabled, live_voice_name, opening_text, closing_text, eval_prompt_body, rubric_body",
       )
       .eq("id", templateId)
       .maybeSingle(),
     supabase.from("safety_envelope").select("body").eq("id", 1).maybeSingle(),
+    supabase
+      .from("prompts")
+      .select("body")
+      .eq("scope", "system")
+      .eq("purpose", "student_summary")
+      .maybeSingle(),
   ]);
+  const summaryPromptBody = (summaryPromptData as { body: string } | null)?.body ?? "";
 
   if (templateErr) {
     return (
@@ -71,6 +79,8 @@ export default async function TemplateTryItOutPage({
     live_voice_name: string | null;
     opening_text: string | null;
     closing_text: string | null;
+    eval_prompt_body: string | null;
+    rubric_body: string | null;
   };
 
   // Pull the linked preset for fallback values. Null for blank-slate
@@ -80,7 +90,7 @@ export default async function TemplateTryItOutPage({
     ? await supabase
         .from("personality_presets")
         .select(
-          "name, persona_body, flow_body, follow_up_depth, personalization_enabled, live_voice_name, opening_text, closing_text",
+          "name, persona_body, flow_body, follow_up_depth, personalization_enabled, live_voice_name, opening_text, closing_text, eval_prompt_body, rubric_body",
         )
         .eq("id", template.personality_preset_id)
         .maybeSingle()
@@ -94,6 +104,8 @@ export default async function TemplateTryItOutPage({
     live_voice_name: string | null;
     opening_text: string | null;
     closing_text: string | null;
+    eval_prompt_body: string | null;
+    rubric_body: string | null;
   } | null;
 
   // Effective values — template overrides win; otherwise preset; otherwise
@@ -212,6 +224,9 @@ export default async function TemplateTryItOutPage({
         systemPrompt={systemPrompt}
         agentName={template.name}
         voiceName={effective.live_voice_name}
+        evalPromptBody={template.eval_prompt_body ?? preset?.eval_prompt_body ?? null}
+        rubricBody={template.rubric_body ?? preset?.rubric_body ?? null}
+        summaryPromptBody={summaryPromptBody}
       />
     </div>
   );

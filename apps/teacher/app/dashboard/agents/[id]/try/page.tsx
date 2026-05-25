@@ -19,15 +19,22 @@ export default async function TryItOutPage({
   const [
     { data: personaData, error: personaErr },
     { data: envelopeData, error: envelopeErr },
+    { data: summaryPromptData },
   ] = await Promise.all([
     supabase
       .from("personality_presets")
       .select(
-        "id, name, persona_body, flow_body, default_question_set_id, live_voice_name, opening_text, closing_text",
+        "id, name, persona_body, flow_body, default_question_set_id, live_voice_name, opening_text, closing_text, eval_prompt_body, rubric_body",
       )
       .eq("id", id)
       .maybeSingle(),
     supabase.from("safety_envelope").select("body").eq("id", 1).maybeSingle(),
+    supabase
+      .from("prompts")
+      .select("body")
+      .eq("scope", "system")
+      .eq("purpose", "student_summary")
+      .maybeSingle(),
   ]);
   // opening_text / closing_text live on exam_templates (per-assignment), not
   // on personality_presets — so they're undefined here. Teacher-side dry-run
@@ -58,6 +65,8 @@ export default async function TryItOutPage({
     flow_body: string;
     follow_up_depth: "light" | "medium" | "deep";
     personalization_enabled: boolean;
+    eval_prompt_body: string | null;
+    rubric_body: string | null;
     default_question_set_id: string | null;
     live_voice_name: string | null;
     opening_text: string | null;
@@ -134,6 +143,9 @@ export default async function TryItOutPage({
         systemPrompt={systemPrompt}
         agentName={persona.name}
         voiceName={persona.live_voice_name}
+        evalPromptBody={persona.eval_prompt_body}
+        rubricBody={persona.rubric_body}
+        summaryPromptBody={summaryPromptData?.body ?? ""}
       />
     </div>
   );
