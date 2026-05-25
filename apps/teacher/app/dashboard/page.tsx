@@ -253,7 +253,7 @@ export default async function DashboardPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h1 className="heading text-2xl">Your courses</h1>
+          <h1 className="text-xl font-medium text-ink">Your courses</h1>
           <p className="muted text-sm mt-1">
             {teacher?.display_name} · {teacher?.email}
           </p>
@@ -345,12 +345,12 @@ function OtherCoursesSection({
                   key={g.course.canvas_course_id}
                   className="truncate text-xs muted"
                 >
-                  {g.course.name}
                   {g.course.course_code && (
-                    <span className="ml-1.5 font-mono muted">
-                      ({g.course.course_code})
+                    <span className="mr-1.5 font-semibold text-maroon">
+                      {g.course.course_code}
                     </span>
                   )}
+                  {g.course.name}
                 </li>
               ))}
             </ul>
@@ -413,7 +413,7 @@ function ConnectCanvasPrompt({ name }: { name: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="heading text-2xl">Welcome{name && `, ${name}`}.</h1>
+        <h1 className="text-xl font-medium text-ink">Welcome{name && `, ${name}`}.</h1>
       </div>
       <div className="bg-white border border-light-blue rounded p-5">
         <h2 className="heading text-lg mb-2">Connect Canvas</h2>

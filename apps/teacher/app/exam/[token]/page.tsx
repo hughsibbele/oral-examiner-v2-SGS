@@ -86,7 +86,7 @@ export default async function ExamPage({
 
   return (
     <>
-      <BrandHeader eyebrow="Episcopal High School" title="Oral Defense" />
+      <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-10 space-y-6">
         <header className="space-y-1">
           {assignmentTitle && (
@@ -173,7 +173,7 @@ export default async function ExamPage({
 function NotConfiguredScreen() {
   return (
     <>
-      <BrandHeader eyebrow="Episcopal High School" title="Oral Defense" />
+      <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-12">
         <h1 className="heading text-2xl mb-3">This exam isn&apos;t ready yet</h1>
         <p className="text-sm leading-relaxed">
@@ -189,7 +189,7 @@ function NotConfiguredScreen() {
 function NotOnRosterScreen({ email }: { email: string }) {
   return (
     <>
-      <BrandHeader eyebrow="Episcopal High School" title="Oral Defense" />
+      <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-12">
         <h1 className="heading text-2xl mb-3">
           We can&apos;t find you on the roster
@@ -223,7 +223,7 @@ function CompletionBlockedScreen({
     : null;
   return (
     <>
-      <BrandHeader eyebrow="Episcopal High School" title="Oral Defense" />
+      <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-12 space-y-3">
         <h1 className="heading text-2xl">Your oral defense is submitted</h1>
         {when && (

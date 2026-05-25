@@ -19,6 +19,7 @@ export default async function AdminLayout({
     return (
       <div className="flex min-h-screen flex-col bg-paper">
         <BrandHeader
+          title="Oral Examiner"
           right={
             <Link
               href="/dashboard"
@@ -88,6 +89,7 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-screen flex-col bg-paper">
       <BrandHeader
+        title="Oral Examiner"
         logoHref="/admin"
         ruleClassName="h-0.5 border-0 bg-dark-blue"
         right={nav}

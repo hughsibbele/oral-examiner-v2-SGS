@@ -75,7 +75,7 @@ export default async function ExamRunPage({
 
   return (
     <>
-      <BrandHeader eyebrow="Episcopal High School" title="Oral Defense" />
+      <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-8 space-y-4">
         <StudentLiveSession
           examSessionId={prior.id}
@@ -94,7 +94,7 @@ function nameForAgent(agent: ResolvedAgent): string {
 function DisconnectedScreen() {
   return (
     <>
-      <BrandHeader eyebrow="Episcopal High School" title="Oral Defense" />
+      <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-12 space-y-3">
         <h1 className="heading text-2xl">Session disconnected</h1>
         <p className="text-sm leading-relaxed">
