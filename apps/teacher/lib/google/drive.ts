@@ -116,6 +116,31 @@ export async function getOrCreateAppFolder(
 }
 
 /** Upload an audio blob to the given parent folder (or Drive root if null). */
+export async function uploadJsonFile(
+  auth: Auth.OAuth2Client,
+  name: string,
+  content: string,
+  parentFolderId: string | null,
+): Promise<DriveFileRef> {
+  const drive = client(auth);
+  const res = await drive.files.create({
+    requestBody: {
+      name,
+      mimeType: "application/json",
+      parents: parentFolderId ? [parentFolderId] : undefined,
+    },
+    media: {
+      mimeType: "application/json",
+      body: Readable.from(Buffer.from(content, "utf-8")),
+    },
+    fields: "id, webViewLink",
+  });
+  if (!res.data.id || !res.data.webViewLink) {
+    throw new Error("Drive JSON upload returned incomplete data.");
+  }
+  return { id: res.data.id, webViewLink: res.data.webViewLink };
+}
+
 export async function uploadAudio(
   auth: Auth.OAuth2Client,
   audio: {

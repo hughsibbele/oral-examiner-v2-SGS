@@ -773,3 +773,128 @@ export async function bulkUninstallExamCards(args: {
     failureCount: results.filter((r) => !r.ok).length,
   };
 }
+
+// =========================================================================
+// M2b.1i — Import template from JSON
+// =========================================================================
+
+export type ImportResult =
+  | { ok: true; templateId: string }
+  | { ok: false; error: string };
+
+export async function importTemplateFromJson(
+  json: string,
+): Promise<ImportResult> {
+  const auth = await getTeacher();
+  if (!auth) return { ok: false, error: "Not signed in." };
+
+  let spec: Record<string, unknown>;
+  try {
+    spec = JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return { ok: false, error: "Invalid JSON." };
+  }
+
+  if (spec._format !== "oral-examiner-template-v1") {
+    return {
+      ok: false,
+      error: "Unrecognized format — expected oral-examiner-template-v1.",
+    };
+  }
+
+  const name = typeof spec.name === "string" ? spec.name : "Imported template";
+  const supabase = await createServerSupabase();
+
+  const { data: template, error: tplErr } = await supabase
+    .from("exam_templates")
+    .insert({
+      teacher_id: auth.teacher.id,
+      name: `${name} (imported)`,
+      persona_body: typeof spec.persona_body === "string" ? spec.persona_body : null,
+      flow_body: typeof spec.flow_body === "string" ? spec.flow_body : null,
+      follow_up_depth:
+        spec.follow_up_depth === "light" ||
+        spec.follow_up_depth === "medium" ||
+        spec.follow_up_depth === "deep"
+          ? spec.follow_up_depth
+          : null,
+      personalization_enabled:
+        typeof spec.personalization_enabled === "boolean"
+          ? spec.personalization_enabled
+          : null,
+      eval_prompt_body:
+        typeof spec.eval_prompt_body === "string" ? spec.eval_prompt_body : null,
+      rubric_body:
+        typeof spec.rubric_body === "string" ? spec.rubric_body : null,
+      live_voice_name:
+        typeof spec.live_voice_name === "string" ? spec.live_voice_name : null,
+      opening_text:
+        typeof spec.opening_text === "string" ? spec.opening_text : null,
+      closing_text:
+        typeof spec.closing_text === "string" ? spec.closing_text : null,
+      intake_config: (spec.intake_config ?? {
+        use_canvas_description: false,
+        use_canvas_submission: false,
+        attachments: [],
+      }) as unknown as Json,
+    })
+    .select("id")
+    .single();
+  if (tplErr || !template) {
+    return { ok: false, error: tplErr?.message ?? "Insert failed." };
+  }
+
+  const qsetSpec = spec.question_set as {
+    name?: string;
+    description?: string;
+    buckets?: {
+      name: string;
+      select_count: number;
+      questions: { text: string; reference_snippet?: string | null }[];
+    }[];
+  } | null;
+
+  if (qsetSpec && Array.isArray(qsetSpec.buckets)) {
+    const { data: qset, error: qsErr } = await supabase
+      .from("question_sets")
+      .insert({
+        teacher_id: auth.teacher.id,
+        name: qsetSpec.name ?? `${name} questions`,
+        description: qsetSpec.description ?? null,
+      })
+      .select("id")
+      .single();
+    if (!qsErr && qset) {
+      for (let bi = 0; bi < qsetSpec.buckets.length; bi++) {
+        const bSpec = qsetSpec.buckets[bi];
+        const { data: bucket } = await supabase
+          .from("question_buckets")
+          .insert({
+            question_set_id: qset.id,
+            name: bSpec.name,
+            position: bi,
+            select_count: bSpec.select_count,
+          })
+          .select("id")
+          .single();
+        if (bucket && Array.isArray(bSpec.questions)) {
+          for (let qi = 0; qi < bSpec.questions.length; qi++) {
+            await supabase.from("questions").insert({
+              question_bucket_id: bucket.id,
+              position: qi,
+              text: bSpec.questions[qi].text,
+              reference_snippet: bSpec.questions[qi].reference_snippet ?? null,
+            });
+          }
+        }
+      }
+      await supabase
+        .from("exam_templates")
+        .update({ question_set_id: qset.id })
+        .eq("id", template.id);
+    }
+  }
+
+  revalidatePath("/dashboard/agents");
+  return { ok: true, templateId: template.id };
+}

@@ -1024,3 +1024,112 @@ async function swapPosition(opts: {
   revalidateAgentHub();
   return { ok: true };
 }
+
+// =========================================================================
+// M2b.1l — Clone locked template as a new editable version.
+// =========================================================================
+
+export type CloneResult =
+  | { ok: true; newTemplateId: string }
+  | { ok: false; error: string };
+
+export async function cloneLockedTemplate(
+  lockedTemplateId: string,
+): Promise<CloneResult> {
+  const auth = await getTeacher();
+  if (!auth) return { ok: false, error: "Not signed in." };
+  const supabase = await createServerSupabase();
+
+  const { data: source, error: srcErr } = await supabase
+    .from("exam_templates")
+    .select("*")
+    .eq("id", lockedTemplateId)
+    .maybeSingle();
+  if (srcErr || !source) {
+    return { ok: false, error: srcErr?.message ?? "Template not found." };
+  }
+
+  const newId = randomUUID();
+  const { error: insertErr } = await supabase.from("exam_templates").insert({
+    id: newId,
+    teacher_id: source.teacher_id,
+    name: `${source.name} (v${Date.now().toString(36).slice(-4)})`,
+    personality_preset_id: source.personality_preset_id,
+    question_set_id: source.question_set_id,
+    intake_config: source.intake_config,
+    persona_body: source.persona_body,
+    flow_body: source.flow_body,
+    follow_up_depth: source.follow_up_depth,
+    personalization_enabled: source.personalization_enabled,
+    eval_prompt_body: source.eval_prompt_body,
+    rubric_body: source.rubric_body,
+    live_voice_name: source.live_voice_name,
+    opening_text: source.opening_text,
+    closing_text: source.closing_text,
+    parent_template_id: lockedTemplateId,
+  });
+  if (insertErr) return { ok: false, error: insertErr.message };
+
+  revalidateAgentHub();
+  return { ok: true, newTemplateId: newId };
+}
+
+// =========================================================================
+// M2b.1i — Save template JSON to teacher's Drive folder
+// =========================================================================
+
+export type SaveToDriveResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+export async function saveTemplateToDrive(
+  templateId: string,
+  jsonContent: string,
+): Promise<SaveToDriveResult> {
+  const auth = await getTeacher();
+  if (!auth) return { ok: false, error: "Not signed in." };
+
+  const supabase = await createServerSupabase();
+  const { data: tpl } = await supabase
+    .from("exam_templates")
+    .select("name, teacher_id")
+    .eq("id", templateId)
+    .maybeSingle();
+  if (!tpl) return { ok: false, error: "Template not found." };
+
+  const { data: teacher } = await supabase
+    .from("teachers")
+    .select("id, drive_folder_id")
+    .eq("id", tpl.teacher_id)
+    .single();
+  if (!teacher) return { ok: false, error: "Teacher not found." };
+
+  let googleClient;
+  try {
+    googleClient = await getTeacherGoogleClient(teacher.id);
+  } catch (e) {
+    if (e instanceof GoogleAuthError) {
+      return { ok: false, error: "Google Drive not connected — sign out and back in." };
+    }
+    throw e;
+  }
+
+  const { getOrCreateAppFolder, uploadJsonFile } = await import(
+    "@/lib/google/drive"
+  );
+  const folder = await getOrCreateAppFolder(
+    googleClient,
+    teacher.drive_folder_id,
+    "Oral Examiner",
+  );
+  if (folder.id !== teacher.drive_folder_id) {
+    await supabase
+      .from("teachers")
+      .update({ drive_folder_id: folder.id })
+      .eq("id", teacher.id);
+  }
+
+  const filename = `${tpl.name.replace(/[^a-z0-9_-]/gi, "_")}.json`;
+  const ref = await uploadJsonFile(googleClient, filename, jsonContent, folder.id);
+  return { ok: true, url: ref.webViewLink };
+}

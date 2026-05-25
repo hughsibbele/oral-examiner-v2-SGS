@@ -51,6 +51,8 @@ import {
   updateTemplateIntakeToggles,
   updateTemplateName,
   updateTemplatePersona,
+  cloneLockedTemplate,
+  saveTemplateToDrive,
 } from "./actions";
 
 const TEMPLATE_INTAKE_ACTIONS: IntakeActions = {
@@ -90,6 +92,7 @@ export type TemplateEditorData = {
     id: string;
     name: string;
     updated_at: string;
+    locked_at: string | null;
     persona_body: string | null;
     flow_body: string | null;
     follow_up_depth: FollowUpDepth | null;
@@ -132,6 +135,7 @@ export type TemplateEditorData = {
     assignment_name: string | null;
     course_name: string | null;
   }[];
+  lintWarnings: string[];
 };
 
 type Status = AutoSaveStatus;
@@ -152,6 +156,7 @@ export function TemplateEditor({
     availableSets,
     sharedAcrossTemplates,
     bindings,
+    lintWarnings,
   } = data;
   const ns = template.id;
   const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -273,7 +278,7 @@ export function TemplateEditor({
   return (
     <div ref={bodyRef} className="space-y-5">
       {/* Header summary */}
-      <section className="surface p-4">
+      <section className="bg-white border border-light-blue rounded p-4">
         <div className="flex items-baseline justify-between gap-3 flex-wrap">
           <div>
             <p className="text-sm">
@@ -307,6 +312,13 @@ export function TemplateEditor({
             >
               Try it out →
             </Link>
+            <TemplateExportButtons
+              template={template}
+              preset={preset}
+              qset={qset}
+              buckets={buckets}
+              questionsByBucket={questionsByBucket}
+            />
             <button
               type="button"
               onClick={onDelete}
@@ -318,16 +330,53 @@ export function TemplateEditor({
         </div>
       </section>
 
+      {/* M2b.1l — locked template banner */}
+      {template.locked_at && (
+        <section className="border border-stone-300 bg-stone-50 rounded p-4 text-sm space-y-2">
+          <p className="font-medium text-stone-900">
+            This template is locked — a student has already taken an exam
+            against it.
+          </p>
+          <p className="text-xs text-stone-600">
+            Edits are disabled to preserve the audit trail. Clone it to
+            create a new editable version with the same settings.
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              const result = await cloneLockedTemplate(template.id);
+              if (result.ok) {
+                router.push(
+                  `/dashboard/agents/templates/${result.newTemplateId}/edit`,
+                );
+              }
+            }}
+            className="rounded border border-maroon px-3 py-1.5 text-xs font-medium text-maroon transition-colors hover:bg-maroon hover:text-white"
+          >
+            Clone as new version
+          </button>
+        </section>
+      )}
+
+      {/* M2b.1k — lint warnings */}
+      {lintWarnings.length > 0 && (
+        <section className="border border-amber-300 bg-amber-50 rounded p-4 space-y-1">
+          {lintWarnings.map((w, i) => (
+            <p key={i} className="text-xs text-amber-900">⚠ {w}</p>
+          ))}
+        </section>
+      )}
+
       {/* Bound assignments */}
       {bindings.length > 0 && (
-        <section className="surface p-4">
+        <section className="bg-white border border-light-blue rounded p-4">
           <div className="flex items-baseline justify-between mb-2">
             <h3 className="heading text-sm">Used by</h3>
             <span className="muted text-xs">
               Detach to free an assignment for a different template
             </span>
           </div>
-          <ul className="divide-y divide-rule">
+          <ul className="divide-y divide-light-blue">
             {bindings.map((b) => (
               <li
                 key={b.canvas_assignment_id}
@@ -473,7 +522,7 @@ export function TemplateEditor({
           )}
         </>
       ) : (
-        <div className="surface p-5">
+        <div className="bg-white border border-light-blue rounded p-5">
           <p className="text-sm muted">
             No question set linked yet. Pick one from the picker above (or
             start a different agent that ships with a default set).
@@ -540,7 +589,7 @@ function TemplateNameForm({
       ref={formRef}
       onSubmit={(e) => e.preventDefault()}
       data-track-dirty
-      className="surface p-5 space-y-3"
+      className="bg-white border border-light-blue rounded p-5 space-y-3"
     >
       <input type="hidden" name="id" value={rowId} />
       <div className="flex items-baseline justify-between">
@@ -553,9 +602,97 @@ function TemplateNameForm({
         name="name"
         defaultValue={defaultName}
         required
-        className="w-full border border-rule rounded px-3 py-2 text-sm font-medium"
+        className="w-full border border-light-blue rounded px-3 py-2 text-sm font-medium"
       />
     </form>
+  );
+}
+
+function TemplateExportButtons({
+  template,
+  preset,
+  qset,
+  buckets,
+  questionsByBucket,
+}: {
+  template: TemplateEditorData["template"];
+  preset: TemplateEditorData["preset"];
+  qset: QSetRow | null;
+  buckets: BucketRow[];
+  questionsByBucket: Record<string, QuestionRow[]>;
+}) {
+  function buildSpec() {
+    return {
+      _format: "oral-examiner-template-v1",
+      name: template.name,
+      preset_name: preset?.name ?? null,
+      persona_body: template.persona_body,
+      flow_body: template.flow_body,
+      follow_up_depth: template.follow_up_depth,
+      personalization_enabled: template.personalization_enabled,
+      eval_prompt_body: template.eval_prompt_body,
+      rubric_body: template.rubric_body,
+      live_voice_name: template.live_voice_name,
+      opening_text: template.opening_text,
+      closing_text: template.closing_text,
+      intake_config: template.intake_config,
+      question_set: qset
+        ? {
+            name: qset.name,
+            description: qset.description,
+            buckets: buckets.map((b) => ({
+              name: b.name,
+              select_count: b.select_count,
+              questions: (questionsByBucket[b.id] ?? []).map((q) => ({
+                text: q.text,
+                reference_snippet: q.reference_snippet,
+              })),
+            })),
+          }
+        : null,
+      exported_at: new Date().toISOString(),
+    };
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          const spec = buildSpec();
+          const blob = new Blob([JSON.stringify(spec, null, 2)], {
+            type: "application/json",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${template.name.replace(/[^a-z0-9_-]/gi, "_")}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }}
+        className="text-xs text-stone-700 underline hover:no-underline"
+      >
+        Download JSON
+      </button>
+      <button
+        type="button"
+        onClick={async () => {
+          const spec = buildSpec();
+          const result = await saveTemplateToDrive(
+            template.id,
+            JSON.stringify(spec, null, 2),
+          );
+          if (result.ok) {
+            window.open(result.url, "_blank");
+          } else {
+            alert(result.error);
+          }
+        }}
+        className="text-xs text-stone-700 underline hover:no-underline"
+      >
+        Save to Drive
+      </button>
+    </>
   );
 }
 

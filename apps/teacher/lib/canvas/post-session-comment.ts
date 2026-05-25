@@ -127,5 +127,7 @@ function composeCommentText(driveDocUrl: string): string {
     `Transcript + summary + evaluation: ${driveDocUrl}`,
     "",
     "(This is a draft comment — only visible to you until you publish.)",
+    "",
+    "<!-- oral-examiner:evaluation v=1 -->",
   ].join("\n");
 }

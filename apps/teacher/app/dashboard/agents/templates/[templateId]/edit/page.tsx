@@ -98,7 +98,7 @@ export default async function TemplateEditPage({
     .maybeSingle();
   if (templateErr) {
     return (
-      <div className="surface p-5">
+      <div className="bg-white border border-light-blue rounded p-5">
         <p className="text-sm">Failed to load template: {templateErr.message}</p>
       </div>
     );
@@ -207,11 +207,39 @@ export default async function TemplateEditPage({
       .map((c) => [c.canvas_course_id, c.payload?.name ?? c.canvas_course_id]),
   );
 
+  // M2b.1k — static lint warnings computed from template + bound assignments.
+  const lintWarnings: string[] = [];
+  const effectiveIntake = parseIntakeConfig(template.intake_config);
+  if (effectiveIntake.use_canvas_submission && bindings.length > 0) {
+    const boundAssignments = (assignmentCache.data ?? []) as {
+      canvas_assignment_id: string;
+      payload: { name?: string; submission_types?: string[] } | null;
+    }[];
+    for (const b of bindings) {
+      const cached = boundAssignments.find(
+        (a) => a.canvas_assignment_id === b.canvas_assignment_id,
+      );
+      const types = cached?.payload?.submission_types ?? [];
+      if (types.length === 0 || !types.includes("online_text_entry")) {
+        const name = assignmentNameById.get(b.canvas_assignment_id) ?? b.canvas_assignment_id;
+        lintWarnings.push(
+          `Intake uses student submission, but "${name}" has no online_text_entry submission type on Canvas — the agent won't receive submission text for that assignment.`,
+        );
+      }
+    }
+  }
+  if (effectiveIntake.use_canvas_submission && bindings.length === 0) {
+    lintWarnings.push(
+      "Intake uses student submission, but this template isn't attached to any Canvas assignment yet.",
+    );
+  }
+
   const data: TemplateEditorData = {
     template: {
       id: template.id,
       name: template.name,
       updated_at: template.updated_at,
+      locked_at: template.locked_at,
       persona_body: template.persona_body,
       flow_body: template.flow_body,
       follow_up_depth: template.follow_up_depth,
@@ -252,6 +280,7 @@ export default async function TemplateEditPage({
       assignment_name: assignmentNameById.get(b.canvas_assignment_id) ?? null,
       course_name: courseNameById.get(b.canvas_course_id) ?? null,
     })),
+    lintWarnings,
   };
 
   return (

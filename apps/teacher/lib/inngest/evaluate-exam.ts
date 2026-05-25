@@ -24,6 +24,7 @@ import {
 } from "@/lib/exam/scrub";
 import { postSessionDraftComment } from "@/lib/canvas/post-session-comment";
 import { saveExamSessionToDrive } from "@/lib/google/save-exam-session";
+import { pushSessionToSuperGrader } from "@/lib/super-grader/notify";
 import type { Database, Json } from "@oral-examiner/db";
 import type { TranscriptEntry } from "@/lib/exam/student-actions";
 import { EXAM_COMPLETED_EVENT, inngest } from "./client";
@@ -415,6 +416,22 @@ export const evaluateExam = inngest.createFunction(
           .eq("id", sessionId);
       });
     }
+
+    // M7.10 — push the completed session's envelope to super-grader.
+    // Best-effort: never throws. Fires regardless of Drive/Canvas outcome
+    // since SG can render the eval even without a Drive doc link.
+    // Idempotent via super_grader_post_status — if already 'posted', the
+    // envelope builder still succeeds but SG's ingest endpoint returns 204
+    // with X-SG-Ingest-Status: stale (harmless).
+    await step.run("push-to-super-grader", async () => {
+      const outcome = await pushSessionToSuperGrader(sessionId);
+      if (outcome.kind === "failed") {
+        logger.info(
+          `[evaluate-exam] push-to-super-grader failed session=${sessionId}: ${outcome.error}`,
+        );
+      }
+      return outcome;
+    });
 
     logger.info(`[evaluate-exam] complete session=${sessionId}`);
     return { ok: true, driveOk: driveOutcome.ok };
