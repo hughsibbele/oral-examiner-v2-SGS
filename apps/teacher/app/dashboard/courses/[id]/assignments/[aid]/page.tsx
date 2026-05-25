@@ -177,6 +177,28 @@ export default async function AssignmentConfigurePage({
         />
       </section>
 
+      {current && (
+        <section className="bg-white border border-stone-200 rounded p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Preview this agent</p>
+            <p className="text-xs muted mt-0.5">
+              Run a live Gemini conversation as if you were the student (burns
+              ~$0.17 per session).
+            </p>
+          </div>
+          <Link
+            href={
+              current.kind === "template"
+                ? `/dashboard/agents/templates/${current.templateId}/try`
+                : `/dashboard/agents/${current.presetId}/try`
+            }
+            className="rounded border border-maroon px-3 py-1.5 text-xs font-medium text-maroon hover:bg-maroon hover:text-white transition-colors"
+          >
+            Try it out →
+          </Link>
+        </section>
+      )}
+
       <section className="bg-white border border-light-blue rounded p-5 space-y-3">
         <div className="flex items-baseline justify-between">
           <h2 className="heading text-lg">Canvas card</h2>
