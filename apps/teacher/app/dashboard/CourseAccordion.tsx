@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { refreshRoster } from "./actions";
@@ -26,14 +26,13 @@ import type {
  * collapse the accordion the teacher was working in.
  */
 function useSessionFlag(key: string, initial: boolean) {
-  const [value, setValue] = useState(initial);
-  useEffect(() => {
+  const [value, setValue] = useState(() => {
+    if (typeof window === "undefined") return initial;
     const raw = sessionStorage.getItem(key);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time post-hydration read
-    if (raw === "1") setValue(true);
-    else if (raw === "0") setValue(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- key is stable per accordion instance
-  }, []);
+    if (raw === "1") return true;
+    if (raw === "0") return false;
+    return initial;
+  });
   const setPersistent = (v: boolean) => {
     setValue(v);
     sessionStorage.setItem(key, v ? "1" : "0");
