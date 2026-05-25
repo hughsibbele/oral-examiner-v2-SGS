@@ -64,10 +64,21 @@ export default async function CanvasSetupPage() {
       <CanvasTokenForm hasExisting={hasToken} initialHost={teacher?.canvas_host ?? ""} />
 
       {/* M7.2 — Google Drive section. Folder auto-created on first
-          eval; manual reset/picker land with M7.6 (HAH-specific) and
-          a future general folder-picker. */}
+          eval; manual reset/picker land with a future folder-picker
+          milestone (M7.6 dropped the configurable-template approach
+          2026-05-24 — see the move-the-folder copy below for the
+          replacement workflow). */}
       <section className="surface p-4 text-sm space-y-3">
         <h2 className="font-medium">Google Drive</h2>
+        <p className="muted text-xs">
+          <strong>Want everything in a shared folder?</strong> Drag the{" "}
+          <strong>Oral Examiner</strong> folder anywhere in your Drive —
+          into a shared course folder, into a subfolder, or rename it.
+          Future exam docs will keep landing in the same folder; the
+          link stays valid. If you trash it, a fresh one is auto-created
+          in your Drive root on the next exam (and you can move that one
+          too).
+        </p>
         <dl className="grid grid-cols-[10rem_1fr] gap-y-1 text-xs">
           <dt className="muted">Status</dt>
           <dd>
