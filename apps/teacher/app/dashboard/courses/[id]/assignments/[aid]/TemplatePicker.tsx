@@ -155,10 +155,10 @@ export function TemplatePicker({
             <>
               Using custom template <strong>{current.templateName}</strong>
               {current.presetName && (
-                <span className="muted"> (based on {current.presetName})</span>
+                <span className="text-stone-500"> (based on {current.presetName})</span>
               )}
               {current.overrideCount > 0 && (
-                <span className="muted">
+                <span className="text-stone-500">
                   {" "}
                   · {current.overrideCount} override
                   {current.overrideCount === 1 ? "" : "s"}
@@ -169,17 +169,17 @@ export function TemplatePicker({
           )}
         </p>
       ) : (
-        <p className="text-sm muted">No agent template assigned yet.</p>
+        <p className="text-sm text-stone-500">No agent template assigned yet.</p>
       )}
 
       {/* Swap dropdown */}
       <div className="flex items-baseline gap-3 flex-wrap">
-        <label className="text-xs muted">Swap to:</label>
+        <label className="text-xs text-stone-500">Swap to:</label>
         <select
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           disabled={pending}
-          className="border border-light-blue rounded px-3 py-2 text-sm min-w-[260px]"
+          className="border border-stone-300 rounded px-3 py-2 text-sm min-w-[260px]"
         >
           {!currentKey && <option value="">— pick an agent —</option>}
           {defaultOptions.length > 0 && (
@@ -239,7 +239,7 @@ export function TemplatePicker({
             type="button"
             onClick={unassign}
             disabled={pending}
-            className="muted underline hover:no-underline disabled:opacity-50"
+            className="text-stone-500 underline hover:no-underline disabled:opacity-50"
             title="Unassigning removes the Canvas card too — cards without an agent route nowhere."
           >
             Unassign agent + remove card
@@ -254,8 +254,8 @@ export function TemplatePicker({
       </div>
 
       {cloneOpen && (
-        <form onSubmit={onClone} className="border-t border-light-blue pt-3 space-y-2">
-          <label className="block text-xs muted">
+        <form onSubmit={onClone} className="border-t border-stone-200 pt-3 space-y-2">
+          <label className="block text-xs text-stone-500">
             New custom template name (must differ from any default:{" "}
             {defaultNames.map((n) => `"${n}"`).join(", ")})
           </label>
@@ -265,7 +265,7 @@ export function TemplatePicker({
               onChange={(e) => setCloneName(e.target.value)}
               required
               placeholder="e.g. ChekhovBot — final paper"
-              className="flex-1 border border-light-blue rounded px-3 py-1.5 text-sm"
+              className="flex-1 border border-stone-300 rounded px-3 py-1.5 text-sm"
               autoFocus
             />
             <button
@@ -276,7 +276,7 @@ export function TemplatePicker({
               {pending ? "Cloning…" : "Clone & open editor"}
             </button>
           </div>
-          <label className="flex items-baseline gap-2 text-xs muted">
+          <label className="flex items-baseline gap-2 text-xs text-stone-500">
             <input
               type="checkbox"
               checked={cloneFromBlank}

@@ -42,7 +42,7 @@ export default async function TryItOutPage({
 
   if (personaErr) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
+      <div className="bg-white border border-stone-200 rounded p-5">
         <p className="text-sm">Failed to load persona: {personaErr.message}</p>
       </div>
     );
@@ -50,7 +50,7 @@ export default async function TryItOutPage({
   if (!personaData) notFound();
   if (envelopeErr || !envelopeData) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
+      <div className="bg-white border border-stone-200 rounded p-5">
         <p className="text-sm">
           Failed to load safety envelope: {envelopeErr?.message ?? "missing row"}
         </p>
@@ -97,8 +97,8 @@ export default async function TryItOutPage({
           <Link href="/dashboard/agents" className="text-sm text-maroon no-underline hover:underline">
             ← All agents
           </Link>
-          <h1 className="heading text-2xl mt-2">Try it out — {persona.name}</h1>
-          <p className="muted text-sm mt-1">
+          <h1 className="font-medium text-ink text-2xl mt-2">Try it out — {persona.name}</h1>
+          <p className="text-stone-500 text-sm mt-1">
             Text-only dry run via Gemini Flash. You play the student; the
             agent reads from the same assembled prompt it would see in a real
             session (minus live audio). Each page load picks a fresh random
@@ -107,31 +107,31 @@ export default async function TryItOutPage({
         </div>
       </div>
 
-      <details className="bg-white border border-light-blue rounded p-4">
+      <details className="bg-white border border-stone-200 rounded p-4">
         <summary className="cursor-pointer text-sm font-medium">
           Assembled system prompt ({systemPrompt.length.toLocaleString()} chars) —
           click to view
         </summary>
-        <pre className="mt-3 text-xs whitespace-pre-wrap font-mono bg-paper border border-light-blue rounded p-3 leading-relaxed max-h-[60vh] overflow-y-auto">
+        <pre className="mt-3 text-xs whitespace-pre-wrap font-mono bg-stone-50 border border-stone-200 rounded p-3 leading-relaxed max-h-[60vh] overflow-y-auto">
           {systemPrompt}
         </pre>
       </details>
 
-      <details className="bg-white border border-light-blue rounded p-4">
+      <details className="bg-white border border-stone-200 rounded p-4">
         <summary className="cursor-pointer text-sm font-medium">
           Selected questions this session ({selected.length})
         </summary>
         <ul className="mt-3 space-y-1 text-sm">
           {selected.map((q, i) => (
             <li key={q.question_id}>
-              <span className="muted text-xs font-mono mr-2">
+              <span className="text-stone-500 text-xs font-mono mr-2">
                 [{q.bucket_name}]
               </span>
               {i + 1}. {q.text}
             </li>
           ))}
           {selected.length === 0 && (
-            <li className="muted text-xs">
+            <li className="text-stone-500 text-xs">
               No questions selected — the agent has no default question set
               linked. Set <code>default_question_set_id</code> on this persona.
             </li>

@@ -100,12 +100,12 @@ export function FlowBlock(props: {
       ref={formRef}
       onSubmit={(e) => e.preventDefault()}
       data-track-dirty
-      className="bg-white border border-light-blue rounded p-5 space-y-4"
+      className="bg-white border border-stone-200 rounded p-5 space-y-4"
     >
       <input type="hidden" name="id" value={rowId} />
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="heading text-lg">Flow</h3>
-        <span className="muted text-xs">
+        <h3 className="font-medium text-ink text-lg">Flow</h3>
+        <span className="text-stone-500 text-xs">
           Examination structure + tempo knobs
         </span>
       </div>
@@ -115,12 +115,12 @@ export function FlowBlock(props: {
         className={`rounded border p-3 text-sm ${
           overCap
             ? "border-red-300 bg-red-50 text-red-900"
-            : "border-light-blue bg-white"
+            : "border-stone-200 bg-white"
         }`}
       >
         <div className="font-medium">
           Estimated session: ~{estimateMin} min{" "}
-          <span className="font-normal muted">
+          <span className="font-normal text-stone-500">
             ({totalQuestions} question{totalQuestions === 1 ? "" : "s"} × ~
             {MINUTES_PER_QUESTION[depth]} min, depth = {depth})
           </span>
@@ -143,7 +143,7 @@ export function FlowBlock(props: {
             name="follow_up_depth"
             defaultValue={values.follow_up_depth}
             onChange={(e) => setDepth(e.target.value as FollowUpDepth)}
-            className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+            className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
           >
             <option value="light">Light — accept first answer</option>
             <option value="medium">Medium — probe key claims once</option>
@@ -189,7 +189,7 @@ export function FlowBlock(props: {
                     : "off"
                   : "inherit"
               }
-              className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+              className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
             >
               <option value="inherit">
                 Inherit from preset (
@@ -233,7 +233,7 @@ export function FlowBlock(props: {
               ? "(leave empty to inherit from the preset's flow body)"
               : undefined
           }
-          className="w-full border border-light-blue rounded px-3 py-2 text-xs font-mono leading-relaxed"
+          className="w-full border border-stone-300 rounded px-3 py-2 text-xs font-mono leading-relaxed"
         />
         {mode === "template" && (
           <InheritIndicator

@@ -37,26 +37,26 @@ export function NewCustomTemplateForm({
       <input type="hidden" name="source_id" value={id ?? ""} />
 
       <div>
-        <label className="block text-xs muted mb-1">Template name</label>
+        <label className="block text-xs text-stone-500 mb-1">Template name</label>
         <input
           name="name"
           required
           minLength={1}
           placeholder="e.g. Final paper · close reading"
-          className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+          className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
         />
-        <p className="muted text-[10px] mt-1">
+        <p className="text-stone-500 text-[10px] mt-1">
           Must differ from any default name:{" "}
           {defaultNames.map((n) => `"${n}"`).join(", ")}
         </p>
       </div>
 
       <div>
-        <label className="block text-xs muted mb-1">Clone from</label>
+        <label className="block text-xs text-stone-500 mb-1">Clone from</label>
         <select
           value={pick}
           onChange={(e) => setPick(e.target.value)}
-          className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+          className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
           disabled={sources.length === 0}
         >
           {sources.map((s) => (

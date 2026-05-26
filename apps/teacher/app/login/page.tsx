@@ -80,7 +80,7 @@ export default async function LoginPage({
             alt="Episcopal High School"
             className="mx-auto h-12 w-auto"
           />
-          <h1 className="heading text-2xl">Oral Examiner</h1>
+          <h1 className="font-medium text-ink text-2xl">Oral Examiner</h1>
           <p className="text-sm text-cool-gray">
             {isStudentPath
               ? "Sign in to begin your oral defense."

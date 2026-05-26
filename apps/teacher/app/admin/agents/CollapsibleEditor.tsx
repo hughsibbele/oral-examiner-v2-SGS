@@ -45,20 +45,20 @@ export function CollapsibleEditor({
   }
 
   return (
-    <section className="bg-white border border-light-blue rounded p-4 border-l-4 border-maroon">
+    <section className="bg-white border border-stone-200 rounded p-4 border-l-4 border-maroon">
       <header className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="heading text-lg">{title}</h3>
-          <p className="muted text-xs mt-0.5">{subtitle}</p>
+          <h3 className="font-medium text-ink text-lg">{title}</h3>
+          <p className="text-stone-500 text-xs mt-0.5">{subtitle}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <span className="muted text-xs">
+          <span className="text-stone-500 text-xs">
             {new Date(updatedAt).toLocaleString()}
           </span>
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
-            className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1 text-xs"
+            className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1 text-xs"
           >
             {open ? "Collapse" : "Edit"}
           </button>
@@ -75,7 +75,7 @@ export function CollapsibleEditor({
             defaultValue={body}
             required
             rows={textareaRows}
-            className="w-full border border-light-blue rounded px-3 py-2 text-xs font-mono leading-relaxed"
+            className="w-full border border-stone-300 rounded px-3 py-2 text-xs font-mono leading-relaxed"
           />
           <div className="flex items-center gap-3">
             <button

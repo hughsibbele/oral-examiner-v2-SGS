@@ -29,8 +29,8 @@ export function CardPreview({
     .replace(/\s*<!--\s*oral-examiner:card:end\s*-->/i, "");
 
   return (
-    <div className="rounded border border-light-blue bg-paper p-3">
-      <div className="text-[10px] uppercase tracking-wide muted mb-2">
+    <div className="rounded border border-stone-200 bg-stone-50 p-3">
+      <div className="text-[10px] uppercase tracking-wide text-stone-500 mb-2">
         Preview — what students see in Canvas
       </div>
       <div

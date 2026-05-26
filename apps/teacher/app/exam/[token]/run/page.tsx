@@ -96,7 +96,7 @@ function DisconnectedScreen() {
     <>
       <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-12 space-y-3">
-        <h1 className="heading text-2xl">Session disconnected</h1>
+        <h1 className="font-medium text-ink text-2xl">Session disconnected</h1>
         <p className="text-sm leading-relaxed">
           It looks like you started your exam and got disconnected — maybe a
           lost connection or a closed tab. The conversation can&apos;t pick

@@ -78,10 +78,10 @@ export function CardTextEditor({
   }
 
   return (
-    <section className="bg-white border border-light-blue rounded p-5 space-y-4">
+    <section className="bg-white border border-stone-200 rounded p-5 space-y-4">
       <div>
         <h2 className="font-medium">Canvas card text</h2>
-        <p className="muted text-xs mt-1">
+        <p className="text-stone-500 text-xs mt-1">
           The wording inside the branded card students see in Canvas. Leave a
           field blank to inherit the school-wide default. Changes apply to{" "}
           <strong>future installs</strong> — already-installed cards keep the
@@ -154,7 +154,7 @@ export function CardTextEditor({
             canvasAssignmentId={previewAssignmentId}
             text={effective}
           />
-          <p className="muted text-xs mt-2">
+          <p className="text-stone-500 text-xs mt-2">
             Live preview reflects your draft. The button doesn&apos;t go
             anywhere in this preview.
           </p>
@@ -203,7 +203,7 @@ function Field({
           onChange={(e) => setValue(e.target.value)}
           rows={4}
           placeholder={placeholder}
-          className="w-full border border-light-blue rounded px-3 py-2 text-sm leading-snug"
+          className="w-full border border-stone-300 rounded px-3 py-2 text-sm leading-snug"
         />
       ) : (
         <input
@@ -212,10 +212,10 @@ function Field({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
-          className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+          className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
         />
       )}
-      <p className="muted text-xs mt-1">
+      <p className="text-stone-500 text-xs mt-1">
         {overriding ? (
           <>
             ● overriding the default. Empty saves re-inherit.

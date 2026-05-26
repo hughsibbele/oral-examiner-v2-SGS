@@ -59,10 +59,10 @@ export function CardTextDefaultsEditor({ initial, updatedAt, appBaseUrl }: Props
   }
 
   return (
-    <section className="bg-white border border-light-blue rounded p-5 space-y-4">
+    <section className="bg-white border border-stone-200 rounded p-5 space-y-4">
       <div>
         <h2 className="font-medium">Canvas card text — system defaults</h2>
-        <p className="muted text-xs mt-1">
+        <p className="text-stone-500 text-xs mt-1">
           What teachers see as the placeholder fallback per field. Each
           teacher can override any subset on their own{" "}
           <code>/dashboard/canvas</code> page; changes here apply to anyone
@@ -126,7 +126,7 @@ export function CardTextDefaultsEditor({ initial, updatedAt, appBaseUrl }: Props
             canvasAssignmentId="preview-1234"
             text={effective}
           />
-          <p className="muted text-xs mt-2">
+          <p className="text-stone-500 text-xs mt-2">
             Live preview reflects your draft. The button doesn&apos;t go
             anywhere in this preview.
           </p>
@@ -159,7 +159,7 @@ function Row({
           onChange={(e) => setValue(e.target.value)}
           required
           rows={4}
-          className="w-full border border-light-blue rounded px-3 py-2 text-sm leading-snug"
+          className="w-full border border-stone-300 rounded px-3 py-2 text-sm leading-snug"
         />
       ) : (
         <input
@@ -168,7 +168,7 @@ function Row({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           required
-          className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+          className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
         />
       )}
     </div>

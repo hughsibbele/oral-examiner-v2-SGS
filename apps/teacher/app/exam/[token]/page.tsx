@@ -90,36 +90,36 @@ export default async function ExamPage({
       <main className="max-w-2xl mx-auto px-6 py-10 space-y-6">
         <header className="space-y-1">
           {assignmentTitle && (
-            <div className="muted text-xs uppercase tracking-wider">
+            <div className="text-stone-500 text-xs uppercase tracking-wider">
               {assignmentTitle}
             </div>
           )}
-          <h1 className="heading text-2xl">Ready to start your oral defense</h1>
+          <h1 className="font-medium text-ink text-2xl">Ready to start your oral defense</h1>
         </header>
 
-        <section className="bg-white border border-light-blue rounded p-5 space-y-3">
+        <section className="bg-white border border-stone-200 rounded p-5 space-y-3">
           <div className="text-sm">
-            <span className="muted">Your examiner: </span>
+            <span className="text-stone-500">Your examiner: </span>
             <span className="font-medium">{agentSummary.name}</span>
           </div>
           {agentSummary.description && (
-            <p className="muted text-sm leading-relaxed">
+            <p className="text-stone-500 text-sm leading-relaxed">
               {agentSummary.description}
             </p>
           )}
           <div className="text-sm">
-            <span className="muted">Estimated length: </span>
+            <span className="text-stone-500">Estimated length: </span>
             <span className="font-medium">~{estimatedDurationMin} minutes</span>
             {questionCount > 0 && (
-              <span className="muted">
+              <span className="text-stone-500">
                 {" "}
                 ({questionCount} questions)
               </span>
             )}
           </div>
           {agentSummary.openingText && (
-            <div className="text-sm border-t border-light-blue pt-3">
-              <div className="muted text-xs mb-1">
+            <div className="text-sm border-t border-stone-200 pt-3">
+              <div className="text-stone-500 text-xs mb-1">
                 Your examiner&apos;s first words will be:
               </div>
               <blockquote className="italic">
@@ -129,8 +129,8 @@ export default async function ExamPage({
           )}
         </section>
 
-        <section className="bg-white border border-light-blue rounded p-5 text-sm leading-relaxed space-y-2">
-          <h2 className="heading text-base">Before you begin</h2>
+        <section className="bg-white border border-stone-200 rounded p-5 text-sm leading-relaxed space-y-2">
+          <h2 className="font-medium text-ink text-base">Before you begin</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
               This conversation will be <strong>recorded</strong> and{" "}
@@ -161,7 +161,7 @@ export default async function ExamPage({
           <button type="submit" className="inline-flex items-center gap-1.5 rounded font-medium bg-maroon border border-maroon text-white transition-colors hover:bg-maroon-dark hover:border-maroon-dark disabled:opacity-40 disabled:cursor-not-allowed justify-center py-3">
             Start exam
           </button>
-          <p className="muted text-xs text-center">
+          <p className="text-stone-500 text-xs text-center">
             Clicking Start opens the live conversation.
           </p>
         </form>
@@ -175,7 +175,7 @@ function NotConfiguredScreen() {
     <>
       <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-12">
-        <h1 className="heading text-2xl mb-3">This exam isn&apos;t ready yet</h1>
+        <h1 className="font-medium text-ink text-2xl mb-3">This exam isn&apos;t ready yet</h1>
         <p className="text-sm leading-relaxed">
           Your teacher hasn&apos;t finished setting up the oral defense for
           this assignment. Please email them and let them know — they need
@@ -191,7 +191,7 @@ function NotOnRosterScreen({ email }: { email: string }) {
     <>
       <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-12">
-        <h1 className="heading text-2xl mb-3">
+        <h1 className="font-medium text-ink text-2xl mb-3">
           We can&apos;t find you on the roster
         </h1>
         <p className="text-sm leading-relaxed">
@@ -225,7 +225,7 @@ function CompletionBlockedScreen({
     <>
       <BrandHeader title="Oral Examiner" />
       <main className="max-w-2xl mx-auto px-6 py-12 space-y-3">
-        <h1 className="heading text-2xl">Your oral defense is submitted</h1>
+        <h1 className="font-medium text-ink text-2xl">Your oral defense is submitted</h1>
         {when && (
           <p className="text-sm leading-relaxed">
             Completed on <strong>{when}</strong>.

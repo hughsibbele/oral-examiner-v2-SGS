@@ -83,8 +83,8 @@ export default async function AgentTemplatesPage() {
   ]);
   if (presetsRes.error) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
-        <h1 className="heading text-2xl mb-2">Agent Templates</h1>
+      <div className="bg-white border border-stone-200 rounded p-5">
+        <h1 className="font-medium text-ink text-2xl mb-2">Agent Templates</h1>
         <p className="text-sm">
           Failed to load defaults: {presetsRes.error.message}
         </p>
@@ -200,8 +200,8 @@ export default async function AgentTemplatesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="heading text-2xl">Agent Templates</h1>
-        <p className="muted text-sm mt-1">
+        <h1 className="font-medium text-ink text-2xl">Agent Templates</h1>
+        <p className="text-stone-500 text-sm mt-1">
           Defaults are maintained by school admins and used by assignments
           out-of-the-box. To customize, clone one into a custom template — you
           must give your custom a different name.
@@ -209,8 +209,8 @@ export default async function AgentTemplatesPage() {
       </div>
 
       {/* New custom template */}
-      <section className="bg-white border border-light-blue rounded p-5">
-        <h2 className="heading text-lg mb-2">+ New custom template</h2>
+      <section className="bg-white border border-stone-200 rounded p-5">
+        <h2 className="font-medium text-ink text-lg mb-2">+ New custom template</h2>
         <NewCustomTemplateForm
           sources={sourceOptions}
           defaultNames={presets.map((p) => p.name)}
@@ -220,8 +220,8 @@ export default async function AgentTemplatesPage() {
       {/* Your custom templates */}
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="heading text-lg">Your custom templates</h2>
-          <span className="muted text-xs">
+          <h2 className="font-medium text-ink text-lg">Your custom templates</h2>
+          <span className="text-stone-500 text-xs">
             Per-customization, not per-assignment. Apply to assignments from{" "}
             <Link href="/dashboard" className="text-maroon no-underline hover:underline">
               your courses
@@ -231,7 +231,7 @@ export default async function AgentTemplatesPage() {
         </div>
 
         {templates.length === 0 ? (
-          <div className="rounded border border-light-blue bg-white p-5 text-sm muted">
+          <div className="rounded border border-stone-200 bg-white p-5 text-sm text-stone-500">
             No custom templates yet. Clone a default above to start customizing.
           </div>
         ) : (
@@ -266,8 +266,8 @@ export default async function AgentTemplatesPage() {
       {/* Default agent templates */}
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="heading text-lg">Default agent templates</h2>
-          <span className="muted text-xs">
+          <h2 className="font-medium text-ink text-lg">Default agent templates</h2>
+          <span className="text-stone-500 text-xs">
             Admin-maintained. Read-only — clone to customize.
           </span>
         </div>

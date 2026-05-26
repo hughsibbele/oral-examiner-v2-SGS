@@ -83,8 +83,8 @@ export function CourseAccordion({
 
   return (
     <section
-      className={`rounded border bg-white transition-colors ${
-        open ? "border-maroon/30 shadow-sm" : "border-light-blue hover:border-stone-300"
+      className={`rounded-md border bg-white transition-colors ${
+        open ? "border-maroon/30 shadow-sm" : "border-stone-200 hover:border-stone-300"
       }`}
     >
       <button
@@ -102,18 +102,18 @@ export function CourseAccordion({
               )}
               {course.name}
               {isInactive && (
-                <span className="ml-2 text-[10px] font-normal uppercase tracking-wide muted">
+                <span className="ml-2 text-[10px] font-normal uppercase tracking-wide text-stone-500">
                   {course.workflow_state}
                 </span>
               )}
             </div>
-            <div className="mt-0.5 truncate text-[11px] muted">
+            <div className="mt-0.5 truncate text-[11px] text-stone-500">
               {course.term?.name ?? "No term"}
             </div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2 text-[11px]">
-          <span className="muted">
+          <span className="text-stone-500">
             {assignments.length} assignment{assignments.length === 1 ? "" : "s"}
           </span>
           {installedCount > 0 ? (
@@ -121,7 +121,7 @@ export function CourseAccordion({
               {installedCount} installed
             </span>
           ) : (
-            <span className="muted">none installed</span>
+            <span className="text-stone-500">none installed</span>
           )}
           {boundCount > 0 && (
             <span
@@ -135,15 +135,15 @@ export function CourseAccordion({
       </button>
 
       {open && (
-        <div className="border-t border-light-blue">
+        <div className="border-t border-stone-200">
           {assignments.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm muted">
+            <div className="px-4 py-6 text-center text-sm text-stone-500">
               No assignments cached for this course yet. Click Refresh above.
             </div>
           ) : (
             <>
               {selectedIds.size > 0 && (
-                <div className="border-b border-light-blue bg-paper px-4 py-3">
+                <div className="border-b border-stone-100 bg-stone-50 px-4 py-3">
                   <BulkActions
                     canvasCourseId={course.canvas_course_id}
                     selectedIds={Array.from(selectedIds)}
@@ -154,15 +154,15 @@ export function CourseAccordion({
                   />
                 </div>
               )}
-              <div className="flex flex-wrap items-center gap-3 border-b border-light-blue px-4 py-2">
+              <div className="flex flex-wrap items-center gap-3 border-b border-stone-100 px-4 py-2">
                 <input
                   type="search"
                   placeholder="Search assignments…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="min-w-[200px] flex-1 rounded border border-light-blue bg-white px-3 py-1.5 text-sm focus:border-maroon focus:outline-none focus:ring-1 focus:ring-maroon"
+                  className="min-w-[200px] flex-1 rounded border border-stone-300 bg-white px-3 py-1.5 text-sm focus:border-maroon focus:outline-none focus:ring-1 focus:ring-maroon"
                 />
-                <span className="text-[11px] muted">
+                <span className="text-[11px] text-stone-500">
                   {filtered.length === assignments.length
                     ? `${assignments.length} total`
                     : `${filtered.length} of ${assignments.length}`}
@@ -170,11 +170,11 @@ export function CourseAccordion({
               </div>
 
               {filtered.length === 0 ? (
-                <div className="px-4 py-6 text-center text-sm muted">
+                <div className="px-4 py-6 text-center text-sm text-stone-500">
                   No assignments match &ldquo;{search}&rdquo;.
                 </div>
               ) : (
-                <ul className="divide-y divide-light-blue">
+                <ul className="divide-y divide-stone-100">
                   {filtered.map((a) => (
                     <AssignmentRow
                       key={a.canvas_assignment_id}
@@ -233,7 +233,7 @@ function AssignmentRow({
   ];
 
   return (
-    <li className="flex items-center gap-3 px-4 py-2 hover:bg-paper">
+    <li className="flex items-center gap-3 px-4 py-2 hover:bg-stone-50">
       <input
         type="checkbox"
         checked={checked}
@@ -241,17 +241,17 @@ function AssignmentRow({
         className="h-4 w-4 shrink-0"
       />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-ink">
-          <Link href={hubHref} className="no-underline text-ink hover:text-maroon">
+        <div className="truncate text-sm font-medium text-stone-900">
+          <Link href={hubHref} className="no-underline text-stone-900 hover:text-maroon">
             {assignment.name}
           </Link>
           {assignment.workflow_state && assignment.workflow_state !== "published" && (
-            <span className="ml-2 text-[10px] font-normal uppercase tracking-wide muted">
+            <span className="ml-2 text-[10px] font-normal uppercase tracking-wide text-stone-500">
               {assignment.workflow_state}
             </span>
           )}
         </div>
-        <div className="text-[11px] muted">
+        <div className="text-[11px] text-stone-500">
           {due}
           {assignment.points_possible != null && <> · {assignment.points_possible} pts</>}
           {assignment.binding && (
@@ -301,7 +301,7 @@ function AssignmentRow({
             Card installed
           </span>
         ) : (
-          <span className="text-[11px] muted">Not installed</span>
+          <span className="shrink-0 rounded-full border border-stone-300 px-2 py-0.5 text-[11px] text-stone-500">Not installed</span>
         )}
         {installed && assignment.binding && (
           <Link
@@ -444,7 +444,7 @@ function BulkActions({
         </span>
 
         <label className="inline-flex items-center gap-1.5 text-ink">
-          <span className="text-[11px] uppercase tracking-wide muted">Agent</span>
+          <span className="text-[11px] uppercase tracking-wide text-stone-500">Agent</span>
           <select
             value={agentKey}
             onChange={(e) => {
@@ -455,7 +455,7 @@ function BulkActions({
               setAgent({ kind, id });
             }}
             disabled={pending}
-            className="rounded border border-light-blue bg-white px-2 py-1 text-xs"
+            className="rounded border border-stone-300 bg-white px-2 py-1 text-xs"
           >
             {defaultAgents.length > 0 && (
               <optgroup label="Default agents">
@@ -480,7 +480,7 @@ function BulkActions({
         </label>
 
         <fieldset className="inline-flex items-center gap-3 text-ink">
-          <legend className="text-[11px] uppercase tracking-wide muted">
+          <legend className="text-[11px] uppercase tracking-wide text-stone-500">
             Exam artifacts submitted to:
           </legend>
           <DestinationCheckbox
@@ -510,7 +510,7 @@ function BulkActions({
           type="button"
           onClick={onClearSelection}
           disabled={pending}
-          className="rounded px-2 py-1 muted hover:bg-stone-100 disabled:opacity-50"
+          className="rounded px-2 py-1 text-stone-500 hover:bg-stone-100 disabled:opacity-50"
         >
           Cancel
         </button>
@@ -519,7 +519,7 @@ function BulkActions({
             type="button"
             onClick={() => run("uninstall")}
             disabled={pending}
-            className="rounded border border-light-blue px-3 py-1 font-semibold text-ink hover:bg-stone-100 disabled:opacity-50"
+            className="rounded border border-stone-200 px-3 py-1 font-semibold text-ink hover:bg-stone-100 disabled:opacity-50"
           >
             {pending ? "Working…" : "Uninstall"}
           </button>
@@ -547,7 +547,7 @@ function BulkActions({
         </button>
       </div>
 
-      <p className="italic muted">
+      <p className="italic text-stone-500">
         {describeDestination({
           drive: postToDrive,
           comment: postToComment,
@@ -580,7 +580,7 @@ function DestinationCheckbox({
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        className="h-3.5 w-3.5 rounded border-light-blue accent-maroon disabled:opacity-50"
+        className="h-3.5 w-3.5 rounded border-stone-200 accent-maroon disabled:opacity-50"
       />
       <span className="text-xs">{label}</span>
     </label>
@@ -643,8 +643,8 @@ function RosterFooter({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-light-blue bg-paper px-4 py-2 text-[11px]">
-      <span className="muted">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 bg-stone-50 px-4 py-2.5 text-xs">
+      <span className="text-stone-500">
         Roster:{" "}
         {roster.studentCount === 0
           ? "not synced yet"
@@ -654,12 +654,12 @@ function RosterFooter({
         )}
       </span>
       <div className="flex items-baseline gap-2">
-        {msg && <span className="muted">{msg}</span>}
+        {msg && <span className="text-stone-500">{msg}</span>}
         <button
           type="button"
           onClick={onClick}
           disabled={pending}
-          className="rounded border border-light-blue bg-white px-2.5 py-1 text-[11px] text-ink hover:border-maroon hover:text-maroon disabled:opacity-50"
+          className="rounded border border-stone-300 bg-white px-2.5 py-1 text-[11px] text-ink hover:border-maroon hover:text-maroon disabled:opacity-50"
         >
           {pending ? "Syncing…" : "Refresh roster"}
         </button>
@@ -675,7 +675,7 @@ function Chevron({ open }: { open: boolean }) {
       width="14"
       height="14"
       viewBox="0 0 20 20"
-      className={`shrink-0 muted transition-transform ${open ? "rotate-90" : ""}`}
+      className={`shrink-0 text-stone-500 transition-transform ${open ? "rotate-90" : ""}`}
     >
       <path
         d="M7 5l6 5-6 5"

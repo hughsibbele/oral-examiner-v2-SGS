@@ -22,13 +22,13 @@ export default async function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="heading text-2xl">Admin</h1>
-        <p className="muted text-sm mt-1">
+        <h1 className="font-medium text-ink text-2xl">Admin</h1>
+        <p className="text-stone-500 text-sm mt-1">
           School-wide configuration and diagnostics.
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4">
         <Tile
           label="Agents"
           value={agentCount ?? 0}
@@ -64,10 +64,10 @@ function Tile({
   hint: string;
 }) {
   return (
-    <Link href={href} className="bg-white border border-light-blue rounded p-4 block no-underline text-ink hover:border-maroon">
-      <div className="muted text-xs uppercase tracking-wider">{label}</div>
-      <div className="heading text-3xl mt-1">{value}</div>
-      <div className="muted text-xs mt-2">{hint}</div>
+    <Link href={href} className="bg-white border border-stone-200 rounded-md p-4 block no-underline text-ink hover:border-dark-blue/40 hover:bg-stone-50">
+      <div className="text-stone-500 text-xs uppercase tracking-wider">{label}</div>
+      <div className="font-medium text-ink text-3xl mt-1">{value}</div>
+      <div className="text-stone-500 text-xs mt-2">{hint}</div>
     </Link>
   );
 }

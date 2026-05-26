@@ -98,7 +98,7 @@ export default async function TemplateEditPage({
     .maybeSingle();
   if (templateErr) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
+      <div className="bg-white border border-stone-200 rounded p-5">
         <p className="text-sm">Failed to load template: {templateErr.message}</p>
       </div>
     );
@@ -286,11 +286,11 @@ export default async function TemplateEditPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/dashboard/agents" className="muted text-sm">
+        <Link href="/dashboard/agents" className="text-stone-500 text-sm">
           ← Agent hub
         </Link>
-        <h1 className="heading text-2xl mt-2">{template.name}</h1>
-        <p className="muted text-sm mt-1">
+        <h1 className="font-medium text-ink text-2xl mt-2">{template.name}</h1>
+        <p className="text-stone-500 text-sm mt-1">
           {preset ? (
             <>
               Based on <strong>{preset.name}</strong>. Each field below
@@ -301,7 +301,7 @@ export default async function TemplateEditPage({
             <>Blank-slate template — fill in persona, flow, and eval below.</>
           )}
         </p>
-        <p className="muted text-xs mt-2">
+        <p className="text-stone-500 text-xs mt-2">
           {bindings.length === 0
             ? "Not yet attached to any Canvas assignment. Open an assignment from your dashboard and pick this template."
             : `Attached to ${bindings.length} Canvas assignment${bindings.length === 1 ? "" : "s"}.`}

@@ -433,11 +433,11 @@ export function TryItOut({
   const canStart = status.kind === "idle" || status.kind === "ended" || status.kind === "error";
 
   return (
-    <section className="bg-white border border-light-blue rounded p-0 overflow-hidden">
-      <header className="px-4 py-3 border-b border-light-blue flex items-center justify-between gap-4 flex-wrap">
+    <section className="bg-white border border-stone-200 rounded p-0 overflow-hidden">
+      <header className="px-4 py-3 border-b border-stone-200 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="heading text-lg">Talk to {agentName}</h2>
-          <p className="muted text-xs">
+          <h2 className="font-medium text-ink text-lg">Talk to {agentName}</h2>
+          <p className="text-stone-500 text-xs">
             Real Gemini Live audio.{" "}
             {voiceName ? (
               <>
@@ -479,7 +479,7 @@ export function TryItOut({
               type="button"
               onClick={stop}
               disabled={status.kind === "starting" || status.kind === "stopping"}
-              className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 text-sm disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 text-sm disabled:opacity-50"
             >
               {status.kind === "stopping" ? "Stopping…" : "Stop"}
             </button>
@@ -489,13 +489,13 @@ export function TryItOut({
 
       <div className="bg-paper px-4 py-4 min-h-[260px] max-h-[60vh] overflow-y-auto space-y-3">
         {transcript.length === 0 && status.kind === "live" && (
-          <p className="muted text-sm text-center py-12">
+          <p className="text-stone-500 text-sm text-center py-12">
             Connected. Wait for the agent to greet you — then speak naturally.
             Pause as long as you need to think; the agent won&apos;t interrupt.
           </p>
         )}
         {transcript.length === 0 && status.kind !== "live" && (
-          <p className="muted text-sm text-center py-12">
+          <p className="text-stone-500 text-sm text-center py-12">
             Click <strong>Start talking</strong>, grant mic permission, and the agent
             will greet you.
           </p>
@@ -511,7 +511,7 @@ export function TryItOut({
         </div>
       )}
       {status.kind === "ended" && (
-        <div className="px-4 py-3 muted text-xs border-t border-light-blue">
+        <div className="px-4 py-3 text-stone-500 text-xs border-t border-stone-200">
           Session ended ({status.reason}). Click <strong>Start again</strong> to retry
           {adminBypass
             ? "."
@@ -568,10 +568,10 @@ function Bubble({
     <div className={`flex ${isAgent ? "justify-start" : "justify-end"}`}>
       <div
         className={`max-w-[80%] rounded-lg px-3 py-2 ${
-          isAgent ? "bg-white border border-light-blue" : "bg-maroon text-white"
+          isAgent ? "bg-white border border-stone-200" : "bg-maroon text-white"
         }`}
       >
-        <div className={`text-xs mb-1 ${isAgent ? "muted" : "text-white/80"}`}>
+        <div className={`text-xs mb-1 ${isAgent ? "text-stone-500" : "text-white/80"}`}>
           {isAgent ? agentName : "You (as student)"}
         </div>
         <div className="text-sm whitespace-pre-wrap leading-relaxed">{text}</div>
@@ -661,7 +661,7 @@ function EvalPreviewPanel({
   }
 
   return (
-    <section className="border-t border-light-blue px-4 py-4 space-y-3">
+    <section className="border-t border-stone-200 px-4 py-4 space-y-3">
       <div className="flex items-baseline justify-between">
         <h3 className="text-sm font-medium">Preview eval + summary</h3>
         {state.kind === "idle" && (
@@ -674,27 +674,27 @@ function EvalPreviewPanel({
           </button>
         )}
         {state.kind === "loading" && (
-          <span className="text-xs muted animate-pulse">Running Gemini eval…</span>
+          <span className="text-xs text-stone-500 animate-pulse">Running Gemini eval…</span>
         )}
       </div>
       {state.kind === "done" && (
         <div className="space-y-3">
           <div>
             <p className="text-xs font-medium mb-1">Student summary</p>
-            <pre className="text-xs whitespace-pre-wrap bg-paper border border-light-blue rounded p-3 leading-relaxed max-h-40 overflow-y-auto">
+            <pre className="text-xs whitespace-pre-wrap bg-stone-50 border border-stone-200 rounded p-3 leading-relaxed max-h-40 overflow-y-auto">
               {state.studentSummary}
             </pre>
           </div>
           {state.evalText && (
             <div>
               <p className="text-xs font-medium mb-1">Evaluation</p>
-              <pre className="text-xs whitespace-pre-wrap bg-paper border border-light-blue rounded p-3 leading-relaxed max-h-60 overflow-y-auto">
+              <pre className="text-xs whitespace-pre-wrap bg-stone-50 border border-stone-200 rounded p-3 leading-relaxed max-h-60 overflow-y-auto">
                 {state.evalText}
               </pre>
             </div>
           )}
           {!state.evalText && (
-            <p className="text-xs muted">
+            <p className="text-xs text-stone-500">
               No evaluation generated — this agent is ungraded (no eval prompt).
             </p>
           )}

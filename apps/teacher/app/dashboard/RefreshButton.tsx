@@ -15,7 +15,7 @@ export function RefreshButton() {
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className="inline-flex items-center gap-1.5 rounded border border-light-blue bg-white px-3 py-1.5 text-xs text-ink transition-colors hover:border-maroon hover:text-maroon disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex items-center gap-1.5 rounded-sm border border-light-blue/80 bg-white px-2 py-0.5 text-xs text-cool-gray transition-colors hover:border-maroon hover:text-maroon disabled:cursor-not-allowed disabled:opacity-60"
       title="Pull the latest courses + active-term assignments from Canvas"
     >
       {pending && <Spinner />}
@@ -28,7 +28,7 @@ export function SyncIndicator({ lastSyncedAt }: { lastSyncedAt: string | null })
   const { pending } = useFormStatus();
   return (
     <span
-      className="muted text-xs italic"
+      className="text-[11px] italic text-cool-gray"
       title={lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : undefined}
     >
       {pending

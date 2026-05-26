@@ -36,8 +36,8 @@ export function CanvasTokenForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="bg-white border border-light-blue rounded p-5 space-y-4">
-      <h2 className="heading text-lg">
+    <form onSubmit={onSubmit} className="bg-white border border-stone-200 rounded p-5 space-y-4">
+      <h2 className="font-medium text-ink text-lg">
         {hasExisting ? "Update Canvas token" : "Connect Canvas"}
       </h2>
 
@@ -52,9 +52,9 @@ export function CanvasTokenForm({
           onChange={(e) => setHost(e.target.value)}
           placeholder="episcopalhighschool.instructure.com"
           required
-          className="w-full px-3 py-1.5 border border-light-blue rounded text-sm"
+          className="w-full px-3 py-1.5 border border-stone-200 rounded text-sm"
         />
-        <p className="muted text-xs">
+        <p className="text-stone-500 text-xs">
           The hostname only — no <code>https://</code>, no path.
         </p>
       </div>
@@ -70,7 +70,7 @@ export function CanvasTokenForm({
           onChange={(e) => setToken(e.target.value)}
           placeholder={hasExisting ? "(unchanged unless you paste a new one)" : ""}
           required={!hasExisting}
-          className="w-full px-3 py-1.5 border border-light-blue rounded text-sm font-mono"
+          className="w-full px-3 py-1.5 border border-stone-200 rounded text-sm font-mono"
         />
       </div>
 
@@ -96,7 +96,7 @@ export function CanvasTokenForm({
           {pending ? "Verifying…" : hasExisting ? "Update connection" : "Connect"}
         </button>
         {hasExisting && (
-          <span className="muted text-xs">
+          <span className="text-stone-500 text-xs">
             Pasting a new token replaces the existing one.
           </span>
         )}

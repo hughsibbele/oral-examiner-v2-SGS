@@ -82,10 +82,10 @@ export function QuestionSetBlock(props: {
   const setOverCap = setEstimateMin > SOFT_MAX_DURATION_MIN;
 
   return (
-    <div className="bg-white border border-light-blue rounded p-5 space-y-4">
+    <div className="bg-white border border-stone-200 rounded p-5 space-y-4">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h3 className="heading text-lg">Question set</h3>
-        <span className="muted text-xs">
+        <h3 className="font-medium text-ink text-lg">Question set</h3>
+        <span className="text-stone-500 text-xs">
           {buckets.length} bucket{buckets.length === 1 ? "" : "s"} ·{" "}
           {totalQuestions} questions ·{" "}
           <span className={setOverCap ? "text-red-700 font-medium" : ""}>
@@ -108,12 +108,12 @@ export function QuestionSetBlock(props: {
       )}
 
       {readOnly ? (
-        <div className="space-y-1 pb-3 border-b border-light-blue">
+        <div className="space-y-1 pb-3 border-b border-stone-200">
           <p className="text-sm">
             <strong>{qset.name}</strong>
           </p>
           {qset.description && (
-            <p className="muted text-xs">{qset.description}</p>
+            <p className="text-stone-500 text-xs">{qset.description}</p>
           )}
         </div>
       ) : (
@@ -121,7 +121,7 @@ export function QuestionSetBlock(props: {
           <form
             action={(fd) => run(`${ns}:set`, () => actions.updateSet(fd))}
             data-track-dirty
-            className="space-y-3 pb-4 border-b border-light-blue"
+            className="space-y-3 pb-4 border-b border-stone-200"
           >
             <input type="hidden" name="id" value={qset.id} />
             <div className="grid sm:grid-cols-2 gap-3">
@@ -130,14 +130,14 @@ export function QuestionSetBlock(props: {
                   name="name"
                   defaultValue={qset.name}
                   required
-                  className="w-full border border-light-blue rounded px-3 py-2 text-sm font-medium"
+                  className="w-full border border-stone-300 rounded px-3 py-2 text-sm font-medium"
                 />
               </Field>
               <Field label="Set description">
                 <input
                   name="description"
                   defaultValue={qset.description ?? ""}
-                  className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+                  className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
                 />
               </Field>
             </div>
@@ -173,28 +173,28 @@ export function QuestionSetBlock(props: {
           action={(fd) =>
             run(`${ns}:add-bucket`, () => actions.createBucket(fd))
           }
-          className="border-t border-light-blue pt-4 space-y-2"
+          className="border-t border-stone-200 pt-4 space-y-2"
         >
           <input type="hidden" name="question_set_id" value={qset.id} />
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <label className="block text-xs muted mb-1">Add bucket</label>
+              <label className="block text-xs text-stone-500 mb-1">Add bucket</label>
               <input
                 name="name"
                 required
                 placeholder="bucket-name (e.g. process)"
-                className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+                className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
               />
             </div>
             <div className="w-28">
-              <label className="block text-xs muted mb-1">Select N</label>
+              <label className="block text-xs text-stone-500 mb-1">Select N</label>
               <input
                 name="select_count"
                 type="number"
                 min={0}
                 defaultValue={1}
                 required
-                className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+                className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
               />
             </div>
             <button
@@ -237,7 +237,7 @@ function BucketBlock({
     bucket.select_count > questions.length && questions.length > 0;
 
   return (
-    <div className="border border-light-blue rounded p-4 space-y-3 bg-white">
+    <div className="border border-stone-200 rounded p-4 space-y-3 bg-white">
       {emptyBucket && (
         <div className="border border-amber-300 bg-amber-50 rounded px-2 py-1.5 text-xs text-amber-900">
           This bucket has no questions but selects {bucket.select_count} —
@@ -255,7 +255,7 @@ function BucketBlock({
         {readOnly || !actions ? (
           <div className="flex items-baseline gap-3 flex-1 min-w-[260px]">
             <span className="font-medium text-sm font-mono">{bucket.name}</span>
-            <span className="muted text-xs">
+            <span className="text-stone-500 text-xs">
               select {bucket.select_count} of {questions.length}
             </span>
           </div>
@@ -269,26 +269,26 @@ function BucketBlock({
             >
               <input type="hidden" name="id" value={bucket.id} />
               <div className="flex-1">
-                <label className="block text-xs muted mb-1">Bucket name</label>
+                <label className="block text-xs text-stone-500 mb-1">Bucket name</label>
                 <input
                   name="name"
                   defaultValue={bucket.name}
                   required
-                  className="w-full border border-light-blue rounded px-3 py-2 text-sm font-medium font-mono"
+                  className="w-full border border-stone-300 rounded px-3 py-2 text-sm font-medium font-mono"
                 />
               </div>
               <div className="w-24">
-                <label className="block text-xs muted mb-1">Select N</label>
+                <label className="block text-xs text-stone-500 mb-1">Select N</label>
                 <input
                   name="select_count"
                   type="number"
                   min={0}
                   defaultValue={bucket.select_count}
                   required
-                  className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+                  className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
                 />
               </div>
-              <button type="submit" className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 text-sm">
+              <button type="submit" className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 text-sm">
                 Save
               </button>
             </form>
@@ -353,12 +353,12 @@ function BucketBlock({
 
       <div>
         {!readOnly && (
-          <p className="muted text-xs mb-1">
+          <p className="text-stone-500 text-xs mb-1">
             Within-bucket order doesn&apos;t matter — the server picks{" "}
             <code>{bucket.select_count}</code> at random per session.
           </p>
         )}
-        <div className="border-t border-light-blue">
+        <div className="border-t border-stone-200">
           {questions.map((q) => (
             <QuestionRowItem
               key={q.id}
@@ -372,7 +372,7 @@ function BucketBlock({
           ))}
         </div>
         {questions.length === 0 && (
-          <p className="muted text-xs">No questions in this bucket yet.</p>
+          <p className="text-stone-500 text-xs">No questions in this bucket yet.</p>
         )}
       </div>
 
@@ -392,10 +392,10 @@ function BucketBlock({
             })
           }
           data-add-q={bucket.id}
-          className="border-t border-light-blue pt-2 space-y-2"
+          className="border-t border-stone-200 pt-2 space-y-2"
         >
           <input type="hidden" name="question_bucket_id" value={bucket.id} />
-          <label className="block text-xs muted">
+          <label className="block text-xs text-stone-500">
             Add question to this bucket
           </label>
           <textarea
@@ -403,7 +403,7 @@ function BucketBlock({
             required
             rows={2}
             placeholder="Question text…"
-            className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+            className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
           />
           <div className="flex items-center gap-2">
             <button
@@ -437,10 +437,10 @@ function QuestionRowItem({
 }) {
   if (readOnly || !actions) {
     return (
-      <div className="py-1.5 border-b border-light-blue last:border-0 text-sm leading-snug">
+      <div className="py-1.5 border-b border-stone-200 last:border-0 text-sm leading-snug">
         {question.text}
         {question.reference_snippet && (
-          <span className="muted text-xs ml-2">
+          <span className="text-stone-500 text-xs ml-2">
             (ref: {question.reference_snippet})
           </span>
         )}
@@ -454,7 +454,7 @@ function QuestionRowItem({
       action={(fd) =>
         run(`${ns}:q:${question.id}`, () => actions.updateQuestion(fd))
       }
-      className="grid grid-cols-[1fr_180px_auto_auto] items-start gap-2 py-1.5 border-b border-light-blue last:border-0"
+      className="grid grid-cols-[1fr_180px_auto_auto] items-start gap-2 py-1.5 border-b border-stone-200 last:border-0"
     >
       <input type="hidden" name="id" value={question.id} />
       <textarea
@@ -462,19 +462,19 @@ function QuestionRowItem({
         defaultValue={question.text}
         required
         rows={1}
-        className="[field-sizing:content] border border-light-blue rounded px-2 py-1 text-sm leading-snug resize-none min-h-[2rem]"
+        className="[field-sizing:content] border border-stone-300 rounded px-2 py-1 text-sm leading-snug resize-none min-h-[2rem]"
       />
       <input
         name="reference_snippet"
         defaultValue={question.reference_snippet ?? ""}
         placeholder='context for the agent (optional, e.g. "Re: Act 3 orchard scene")'
         title="Short anchor the agent can reference when asking this question — gives concrete grounding without forcing the agent to invent context. Leave blank if the question is self-contained."
-        className="border border-light-blue rounded px-2 py-1 text-xs text-ink/70 min-h-[2rem]"
+        className="border border-stone-300 rounded px-2 py-1 text-xs text-ink/70 min-h-[2rem]"
       />
       <button
         type="submit"
         title="Save row"
-        className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs min-h-[2rem]"
+        className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs min-h-[2rem]"
       >
         {status === "saving" ? "…" : "Save"}
       </button>

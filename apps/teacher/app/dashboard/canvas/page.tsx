@@ -35,11 +35,11 @@ export default async function CanvasSetupPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/dashboard" className="muted text-sm">
+        <Link href="/dashboard" className="text-stone-500 text-sm">
           ← Dashboard
         </Link>
-        <h1 className="heading text-2xl mt-2">Canvas &amp; Drive setup</h1>
-        <p className="muted text-sm mt-1">
+        <h1 className="font-medium text-ink text-2xl mt-2">Setup</h1>
+        <p className="text-stone-500 text-sm mt-1">
           OE v2 uses your Canvas API token to read courses and assignments,
           install the branded card on each assignment, and post oral-defense
           submissions on the student&apos;s behalf via{" "}
@@ -50,9 +50,9 @@ export default async function CanvasSetupPage() {
       </div>
 
       {hasToken && (
-        <div className="bg-white border border-light-blue rounded p-4 text-sm">
+        <div className="bg-white border border-stone-200 rounded p-4 text-sm">
           <span className="font-medium">✓ Canvas connected</span>
-          <span className="muted ml-2">
+          <span className="text-stone-500 ml-2">
             Host: <code>{teacher.canvas_host}</code>. Token encrypted at rest.
           </span>
         </div>
@@ -65,9 +65,9 @@ export default async function CanvasSetupPage() {
           milestone (M7.6 dropped the configurable-template approach
           2026-05-24 — see the move-the-folder copy below for the
           replacement workflow). */}
-      <section className="bg-white border border-light-blue rounded p-4 text-sm space-y-3">
+      <section className="bg-white border border-stone-200 rounded p-4 text-sm space-y-3">
         <h2 className="font-medium">Google Drive</h2>
-        <p className="muted text-xs">
+        <p className="text-stone-500 text-xs">
           <strong>Want everything in a shared folder?</strong> Drag the{" "}
           <strong>Oral Examiner</strong> folder anywhere in your Drive —
           into a shared course folder, into a subfolder, or rename it.
@@ -77,12 +77,12 @@ export default async function CanvasSetupPage() {
           too).
         </p>
         <dl className="grid grid-cols-[10rem_1fr] gap-y-1 text-xs">
-          <dt className="muted">Status</dt>
+          <dt className="text-stone-500">Status</dt>
           <dd>
             {driveConnected ? (
               <span>✓ Connected for {teacher?.display_name}</span>
             ) : (
-              <span className="muted">
+              <span className="text-stone-500">
                 Not connected — sign out and back in with Google to grant
                 Drive scopes (drive.file + documents).
               </span>
@@ -90,7 +90,7 @@ export default async function CanvasSetupPage() {
           </dd>
           {driveConnected && (
             <>
-              <dt className="muted">App folder</dt>
+              <dt className="text-stone-500">App folder</dt>
               <dd>
                 {driveFolderUrl ? (
                   <a
@@ -102,17 +102,17 @@ export default async function CanvasSetupPage() {
                     Open &ldquo;Oral Examiner&rdquo; in Drive ↗
                   </a>
                 ) : (
-                  <span className="muted italic">
+                  <span className="text-stone-500 italic">
                     Auto-created on your first completed exam.
                   </span>
                 )}
               </dd>
               {teacher?.google_token_expires_at && (
                 <>
-                  <dt className="muted">Access token expires</dt>
+                  <dt className="text-stone-500">Access token expires</dt>
                   <dd>
                     {new Date(teacher.google_token_expires_at).toLocaleString()}{" "}
-                    <span className="muted">
+                    <span className="text-stone-500">
                       (auto-refreshed when within 5 min of expiry)
                     </span>
                   </dd>
@@ -123,7 +123,7 @@ export default async function CanvasSetupPage() {
         </dl>
         {!driveConnected && (
           <form action="/auth/signout" method="post">
-            <button type="submit" className="inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed">
+            <button type="submit" className="inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed">
               Sign out to reconnect
             </button>
           </form>
@@ -134,9 +134,9 @@ export default async function CanvasSetupPage() {
           comment writes; per-assignment override stays on
           exam_template_bindings.post_to_canvas_comment. */}
       {teacher && (
-        <section className="bg-white border border-light-blue rounded p-4 text-sm space-y-3">
+        <section className="bg-white border border-stone-200 rounded p-4 text-sm space-y-3">
           <h2 className="font-medium">Canvas posting</h2>
-          <p className="muted text-xs">
+          <p className="text-stone-500 text-xs">
             When an exam finishes evaluating, OE can post a draft comment
             on the student&rsquo;s Canvas submission carrying the Drive
             doc link. Drafts are only visible to you in SpeedGrader until
@@ -158,9 +158,9 @@ export default async function CanvasSetupPage() {
         />
       )}
 
-      <section className="bg-white border border-light-blue rounded p-4 text-sm space-y-2">
+      <section className="bg-white border border-stone-200 rounded p-4 text-sm space-y-2">
         <h2 className="font-medium">How to get a Canvas API token</h2>
-        <ol className="list-decimal list-inside space-y-1 muted">
+        <ol className="list-decimal list-inside space-y-1 text-stone-500">
           <li>Open Canvas → Account → Settings.</li>
           <li>Scroll to <span className="font-medium">Approved Integrations</span>.</li>
           <li>Click <span className="font-medium">+ New Access Token</span>.</li>
@@ -169,7 +169,7 @@ export default async function CanvasSetupPage() {
           </li>
           <li>Copy the token immediately — Canvas only shows it once.</li>
         </ol>
-        <p className="muted">
+        <p className="text-stone-500">
           Token is encrypted at rest with AES-256-GCM. You can rotate any time by
           generating a new token in Canvas and pasting it here.
         </p>

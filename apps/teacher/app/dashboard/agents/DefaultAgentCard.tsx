@@ -48,17 +48,17 @@ export function DefaultAgentCard({
   }
 
   return (
-    <div className="bg-white border border-light-blue rounded p-5">
+    <div className="bg-white border border-stone-200 rounded p-5">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="heading text-base">{preset.name}</h3>
+        <h3 className="font-medium text-ink text-base">{preset.name}</h3>
         {preset.live_voice_name && (
-          <span className="muted text-xs">voice: {preset.live_voice_name}</span>
+          <span className="text-stone-500 text-xs">voice: {preset.live_voice_name}</span>
         )}
       </div>
       {preset.description && (
-        <p className="muted text-sm mt-1">{preset.description}</p>
+        <p className="text-stone-500 text-sm mt-1">{preset.description}</p>
       )}
-      <div className="muted text-xs mt-3 flex gap-3 flex-wrap">
+      <div className="text-stone-500 text-xs mt-3 flex gap-3 flex-wrap">
         <span>{preset.ungraded ? "Ungraded" : "Graded"}</span>
         {preset.totalQuestions > 0 && (
           <span>
@@ -89,8 +89,8 @@ export function DefaultAgentCard({
       </div>
 
       {open && (
-        <form onSubmit={onClone} className="mt-3 space-y-2 border-t border-light-blue pt-3">
-          <label className="block text-xs muted">
+        <form onSubmit={onClone} className="mt-3 space-y-2 border-t border-stone-200 pt-3">
+          <label className="block text-xs text-stone-500">
             Name your custom template (must differ from &ldquo;{preset.name}&rdquo;)
           </label>
           <div className="flex items-baseline gap-2">
@@ -99,7 +99,7 @@ export function DefaultAgentCard({
               onChange={(e) => setNewName(e.target.value)}
               required
               placeholder={`e.g. ${preset.name} — close reading`}
-              className="flex-1 border border-light-blue rounded px-3 py-1.5 text-sm"
+              className="flex-1 border border-stone-300 rounded px-3 py-1.5 text-sm"
               autoFocus
             />
             <button

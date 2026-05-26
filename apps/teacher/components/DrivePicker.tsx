@@ -279,7 +279,7 @@ export function DrivePicker({
         type="button"
         onClick={open}
         disabled={busy || disabled}
-        className={className ?? "inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed"}
+        className={className ?? "inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed"}
       >
         {busy
           ? "Loading…"

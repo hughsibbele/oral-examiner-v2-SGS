@@ -665,11 +665,11 @@ export function StudentLiveSession({
   }
 
   return (
-    <section className="bg-white border border-light-blue rounded p-0 overflow-hidden">
-      <header className="px-4 py-3 border-b border-light-blue flex items-center justify-between gap-4 flex-wrap">
+    <section className="bg-white border border-stone-200 rounded p-0 overflow-hidden">
+      <header className="px-4 py-3 border-b border-stone-200 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="heading text-lg">Oral defense with {agentName}</h2>
-          <p className="muted text-xs">
+          <h2 className="font-medium text-ink text-lg">Oral defense with {agentName}</h2>
+          <p className="text-stone-500 text-xs">
             Speak naturally. The agent waits for you — pause as long as you
             need to think.
           </p>
@@ -687,16 +687,16 @@ export function StudentLiveSession({
 
       <div className="bg-paper px-4 py-4 min-h-[320px] max-h-[60vh] overflow-y-auto space-y-3">
         {status.kind === "idle" && (
-          <p className="muted text-sm text-center py-12">
+          <p className="text-stone-500 text-sm text-center py-12">
             Click <strong>Start exam</strong> below, grant microphone
             permission, and your examiner will greet you.
           </p>
         )}
         {status.kind === "starting" && (
-          <p className="muted text-sm text-center py-12">Connecting…</p>
+          <p className="text-stone-500 text-sm text-center py-12">Connecting…</p>
         )}
         {status.kind === "live" && transcript.length === 0 && (
-          <p className="muted text-sm text-center py-12">
+          <p className="text-stone-500 text-sm text-center py-12">
             Connected. Wait for {agentName} to greet you — then speak
             naturally.
           </p>
@@ -711,7 +711,7 @@ export function StudentLiveSession({
         ))}
       </div>
 
-      <footer className="px-4 py-4 border-t border-light-blue flex items-center justify-between gap-3 flex-wrap">
+      <footer className="px-4 py-4 border-t border-stone-200 flex items-center justify-between gap-3 flex-wrap">
         {status.kind === "idle" || status.kind === "error" ? (
           <button
             type="button"
@@ -732,7 +732,7 @@ export function StudentLiveSession({
             {status.kind === "stopping" ? "Ending…" : "End exam"}
           </button>
         )}
-        <p className="muted text-xs flex-1 text-right min-w-[200px]">
+        <p className="text-stone-500 text-xs flex-1 text-right min-w-[200px]">
           Your conversation is being recorded and transcribed. Your teacher
           will see the transcript.
         </p>
@@ -805,10 +805,10 @@ function Bubble({
     <div className={`flex ${isAgent ? "justify-start" : "justify-end"}`}>
       <div
         className={`max-w-[80%] rounded-lg px-3 py-2 ${
-          isAgent ? "bg-white border border-light-blue" : "bg-maroon text-white"
+          isAgent ? "bg-white border border-stone-200" : "bg-maroon text-white"
         }`}
       >
-        <div className={`text-xs mb-1 ${isAgent ? "muted" : "text-white/80"}`}>
+        <div className={`text-xs mb-1 ${isAgent ? "text-stone-500" : "text-white/80"}`}>
           {isAgent ? agentName : "You"}
         </div>
         <div className="text-sm whitespace-pre-wrap leading-relaxed">

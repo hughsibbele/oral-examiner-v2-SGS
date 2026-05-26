@@ -127,26 +127,26 @@ export function IntakeBlock({
   }
 
   return (
-    <section className="bg-white border border-light-blue rounded p-5 space-y-4">
+    <section className="bg-white border border-stone-200 rounded p-5 space-y-4">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="heading text-lg">Intake</h3>
+          <h3 className="font-medium text-ink text-lg">Intake</h3>
           {mode === "template" && resetTargetLabel && (
-            <p className="muted text-xs mt-0.5">
+            <p className="text-stone-500 text-xs mt-0.5">
               Editing this template&apos;s intake. Reset to fall back to{" "}
               <span className="italic">{resetTargetLabel}</span>.
             </p>
           )}
         </div>
         <div className="flex items-baseline gap-3">
-          <span className="muted text-xs">
+          <span className="text-stone-500 text-xs">
             What the agent sees before the student speaks
           </span>
           {mode === "template" && actions.resetIntake && (
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-0.5 text-xs"
               title={`Re-copy ${resetTargetLabel ?? "defaults"} into this template`}
             >
               reset to defaults
@@ -196,7 +196,7 @@ export function IntakeBlock({
               <span className="font-medium">
                 Use Canvas assignment description
               </span>
-              <p className="muted text-xs mt-0.5">
+              <p className="text-stone-500 text-xs mt-0.5">
                 The agent reads the assignment&apos;s description before the
                 exam — useful when the prompt itself is in Canvas (e.g.
                 &ldquo;respond to question X about the readings&rdquo;).
@@ -214,7 +214,7 @@ export function IntakeBlock({
               <span className="font-medium">
                 Use student&apos;s submission body
               </span>
-              <p className="muted text-xs mt-0.5">
+              <p className="text-stone-500 text-xs mt-0.5">
                 Include the student&apos;s text submission (essay, response,
                 etc.) — required when the oral exam defends a piece of
                 student writing.
@@ -230,7 +230,7 @@ export function IntakeBlock({
           <h4 className="text-sm font-medium">
             Reference materials
             {intakeConfig.attachments.length > 0 && (
-              <span className="muted ml-2 text-xs">
+              <span className="text-stone-500 ml-2 text-xs">
                 ({intakeConfig.attachments.length})
               </span>
             )}
@@ -241,7 +241,7 @@ export function IntakeBlock({
                 ? "text-red-700 font-medium"
                 : nearCap
                   ? "text-yellow-700"
-                  : "muted"
+                  : "text-stone-500"
             }`}
             title={`10MB per attachment cap on input; ${formatBytes(capBytes)} total cap across all attachments`}
           >
@@ -263,9 +263,9 @@ export function IntakeBlock({
         </div>
 
         {intakeConfig.attachments.length === 0 ? (
-          <p className="muted text-xs italic">No reference materials yet.</p>
+          <p className="text-stone-500 text-xs italic">No reference materials yet.</p>
         ) : (
-          <ul className="border border-light-blue rounded divide-y divide-light-blue">
+          <ul className="border border-stone-200 rounded divide-y divide-stone-100">
             {intakeConfig.attachments.map((att) => (
               <AttachmentRow
                 key={att.id}
@@ -286,9 +286,9 @@ export function IntakeBlock({
             onPick={handleDrivePick}
             mimeTypes={ATTACHMENT_PDF_TYPES}
             label="Pick from Drive"
-            className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm"
+            className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm"
           />
-          <label className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm cursor-pointer">
+          <label className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm cursor-pointer">
             Upload PDF
             <input
               ref={fileInputRef}
@@ -301,7 +301,7 @@ export function IntakeBlock({
           <button
             type="button"
             onClick={() => setShowPaste((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm"
+            className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-sm"
           >
             {showPaste ? "Cancel paste" : "Paste text"}
           </button>
@@ -320,21 +320,21 @@ export function IntakeBlock({
                 return r;
               })
             }
-            className="space-y-2 border border-light-blue rounded p-3 bg-white"
+            className="space-y-2 border border-stone-200 rounded p-3 bg-white"
           >
             <input type="hidden" name="id" value={rowId} />
             <input
               name="name"
               required
               placeholder="Snippet name (e.g. rubric criteria)"
-              className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+              className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
             />
             <textarea
               name="content"
               required
               rows={6}
               placeholder="Paste reference text here…"
-              className="w-full border border-light-blue rounded px-3 py-2 text-sm font-mono leading-snug"
+              className="w-full border border-stone-300 rounded px-3 py-2 text-sm font-mono leading-snug"
             />
             <div className="flex items-center gap-2">
               <button
@@ -375,13 +375,13 @@ function AttachmentRow({
       <span className="flex-1 truncate" title={attachment.name}>
         {attachment.name}
       </span>
-      <span className="muted text-xs whitespace-nowrap">
+      <span className="text-stone-500 text-xs whitespace-nowrap">
         {formatBytes(attachment.byte_size)}
       </span>
       <button
         type="button"
         title="Remove"
-        className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+        className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs text-red-700 hover:bg-red-50"
         onClick={() => {
           if (!window.confirm(`Remove "${attachment.name}"?`)) return;
           run(del, () => {

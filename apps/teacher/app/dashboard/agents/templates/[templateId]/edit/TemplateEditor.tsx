@@ -278,7 +278,7 @@ export function TemplateEditor({
   return (
     <div ref={bodyRef} className="space-y-5">
       {/* Header summary */}
-      <section className="bg-white border border-light-blue rounded p-4">
+      <section className="bg-white border border-stone-200 rounded p-4">
         <div className="flex items-baseline justify-between gap-3 flex-wrap">
           <div>
             <p className="text-sm">
@@ -286,14 +286,14 @@ export function TemplateEditor({
                 <>
                   Based on <strong>{preset.name}</strong>
                   {preset.description && (
-                    <span className="muted"> — {preset.description}</span>
+                    <span className="text-stone-500"> — {preset.description}</span>
                   )}
                 </>
               ) : (
-                <span className="muted">Blank-slate template</span>
+                <span className="text-stone-500">Blank-slate template</span>
               )}
             </p>
-            <p className="muted text-xs mt-0.5">
+            <p className="text-stone-500 text-xs mt-0.5">
               {totalSelected} question{totalSelected === 1 ? "" : "s"} per
               session ≈{" "}
               <span className={summaryOverCap ? "text-red-700 font-medium" : ""}>
@@ -369,14 +369,14 @@ export function TemplateEditor({
 
       {/* Bound assignments */}
       {bindings.length > 0 && (
-        <section className="bg-white border border-light-blue rounded p-4">
+        <section className="bg-white border border-stone-200 rounded p-4">
           <div className="flex items-baseline justify-between mb-2">
-            <h3 className="heading text-sm">Used by</h3>
-            <span className="muted text-xs">
+            <h3 className="font-medium text-ink text-sm">Used by</h3>
+            <span className="text-stone-500 text-xs">
               Detach to free an assignment for a different template
             </span>
           </div>
-          <ul className="divide-y divide-light-blue">
+          <ul className="divide-y divide-stone-100">
             {bindings.map((b) => (
               <li
                 key={b.canvas_assignment_id}
@@ -386,7 +386,7 @@ export function TemplateEditor({
                   <div className="truncate">
                     {b.assignment_name ?? `Assignment ${b.canvas_assignment_id}`}
                   </div>
-                  <div className="muted text-xs">
+                  <div className="text-stone-500 text-xs">
                     {b.course_name ?? `Course ${b.canvas_course_id}`}
                   </div>
                 </div>
@@ -395,7 +395,7 @@ export function TemplateEditor({
                   onClick={() =>
                     onUnbind(b.canvas_course_id, b.canvas_assignment_id)
                   }
-                  className="text-xs muted underline hover:text-maroon"
+                  className="text-xs text-stone-500 underline hover:text-maroon"
                 >
                   detach
                 </button>
@@ -510,7 +510,7 @@ export function TemplateEditor({
             tagStatus={tagStatus}
           />
           {qset.teacher_id == null && (
-            <p className="muted text-xs px-1">
+            <p className="text-stone-500 text-xs px-1">
               System-seeded set — read-only here. Click &ldquo;Make my own
               copy&rdquo; above to clone it into an editable set. Admins
               can also edit the canonical defaults at{" "}
@@ -522,8 +522,8 @@ export function TemplateEditor({
           )}
         </>
       ) : (
-        <div className="bg-white border border-light-blue rounded p-5">
-          <p className="text-sm muted">
+        <div className="bg-white border border-stone-200 rounded p-5">
+          <p className="text-sm text-stone-500">
             No question set linked yet. Pick one from the picker above (or
             start a different agent that ships with a default set).
           </p>
@@ -589,12 +589,12 @@ function TemplateNameForm({
       ref={formRef}
       onSubmit={(e) => e.preventDefault()}
       data-track-dirty
-      className="bg-white border border-light-blue rounded p-5 space-y-3"
+      className="bg-white border border-stone-200 rounded p-5 space-y-3"
     >
       <input type="hidden" name="id" value={rowId} />
       <div className="flex items-baseline justify-between">
-        <h3 className="heading text-lg">Template name</h3>
-        <span className="muted text-xs">
+        <h3 className="font-medium text-ink text-lg">Template name</h3>
+        <span className="text-stone-500 text-xs">
           How this template appears in the Agent hub.
         </span>
       </div>
@@ -602,7 +602,7 @@ function TemplateNameForm({
         name="name"
         defaultValue={defaultName}
         required
-        className="w-full border border-light-blue rounded px-3 py-2 text-sm font-medium"
+        className="w-full border border-stone-300 rounded px-3 py-2 text-sm font-medium"
       />
     </form>
   );

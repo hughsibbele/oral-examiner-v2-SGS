@@ -51,10 +51,10 @@ export function QuestionSetPicker({
   const cloneStatus = tagStatus(cloneTag);
 
   return (
-    <section className="bg-white border border-light-blue rounded p-5 space-y-3 border-l-4 border-light-blue">
+    <section className="bg-white border border-stone-200 rounded p-5 space-y-3 border-l-4 border-stone-200">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h3 className="heading text-sm">Which questions does this agent ask?</h3>
-        <span className="muted text-xs">
+        <h3 className="font-medium text-ink text-sm">Which questions does this agent ask?</h3>
+        <span className="text-stone-500 text-xs">
           {isTeacherOwned
             ? "Editing your own copy"
             : "Reading from the system default (read-only)"}
@@ -67,11 +67,11 @@ export function QuestionSetPicker({
       >
         <input type="hidden" name="id" value={templateId} />
         <div className="flex-1 min-w-[280px]">
-          <label className="block text-xs muted mb-1">Question set</label>
+          <label className="block text-xs text-stone-500 mb-1">Question set</label>
           <select
             name="question_set_id"
             defaultValue={currentSet?.id ?? ""}
-            className="w-full border border-light-blue rounded px-3 py-2 text-sm bg-white"
+            className="w-full border border-stone-300 rounded px-3 py-2 text-sm bg-white"
           >
             {!currentSet && <option value="">— pick a set —</option>}
             {systemSets.length > 0 && (
@@ -96,7 +96,7 @@ export function QuestionSetPicker({
         </div>
         <button
           type="submit"
-          className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 text-sm"
+          className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 text-sm"
           title="Switch this template to the selected question set"
         >
           {switchStatus === "saving" ? "Switching…" : "Use this set"}
@@ -118,7 +118,7 @@ export function QuestionSetPicker({
             <button
               type="button"
               onClick={() => setShowClone(true)}
-              className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs"
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs"
               title="Make an editable, teacher-owned copy of this set; the template will re-link to your copy."
             >
               Make my own copy of {currentSet.name} →
@@ -132,18 +132,18 @@ export function QuestionSetPicker({
                   return r;
                 })
               }
-              className="flex items-end gap-2 flex-wrap border border-light-blue rounded p-3 bg-white"
+              className="flex items-end gap-2 flex-wrap border border-stone-200 rounded p-3 bg-white"
             >
               <input type="hidden" name="id" value={templateId} />
               <div className="flex-1 min-w-[260px]">
-                <label className="block text-xs muted mb-1">
+                <label className="block text-xs text-stone-500 mb-1">
                   Name your copy
                 </label>
                 <input
                   name="name"
                   required
                   defaultValue={`${currentSet.name} (my copy)`}
-                  className="w-full border border-light-blue rounded px-3 py-2 text-sm"
+                  className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
                 />
               </div>
               <button
@@ -155,7 +155,7 @@ export function QuestionSetPicker({
               <button
                 type="button"
                 onClick={() => setShowClone(false)}
-                className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 text-sm"
+                className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 text-sm"
               >
                 Cancel
               </button>

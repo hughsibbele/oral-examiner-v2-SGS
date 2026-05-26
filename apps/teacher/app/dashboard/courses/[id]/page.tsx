@@ -92,27 +92,27 @@ export default async function CoursePage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/dashboard" className="muted text-sm">
+        <Link href="/dashboard" className="text-stone-500 text-sm">
           ← Dashboard
         </Link>
-        <h1 className="heading text-2xl mt-2">{course.name}</h1>
-        <p className="muted text-sm mt-1">
+        <h1 className="font-medium text-ink text-2xl mt-2">{course.name}</h1>
+        <p className="text-stone-500 text-sm mt-1">
           {course.course_code ?? "—"} · Canvas course {canvasCourseId}
         </p>
       </div>
 
-      <section className="bg-white border border-light-blue rounded p-5">
+      <section className="bg-white border border-stone-200 rounded p-5">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="heading text-lg">Assignments</h2>
+          <h2 className="font-medium text-ink text-lg">Assignments</h2>
           <RefreshAssignmentsButton canvasCourseId={canvasCourseId} />
         </div>
 
         {assignments.length === 0 ? (
-          <p className="text-sm muted">
+          <p className="text-sm text-stone-500">
             No assignments cached yet. Refresh from Canvas to populate.
           </p>
         ) : (
-          <ul className="divide-y divide-light-blue border border-light-blue rounded">
+          <ul className="divide-y divide-stone-100 border border-stone-200 rounded">
             {assignments.map((row) => {
               const a = row.payload;
               const due = a.due_at ? new Date(a.due_at).toLocaleDateString() : "—";
@@ -132,7 +132,7 @@ export default async function CoursePage({
                     >
                       {a.name}
                     </Link>
-                    <div className="muted text-xs mt-0.5 flex flex-wrap items-center gap-2">
+                    <div className="text-stone-500 text-xs mt-0.5 flex flex-wrap items-center gap-2">
                       <span>
                         Due {due}
                         {typeof a.points_possible === "number" && ` · ${a.points_possible} pts`}
@@ -159,7 +159,7 @@ export default async function CoursePage({
                     />
                     <Link
                       href={`/dashboard/courses/${canvasCourseId}/assignments/${row.canvas_assignment_id}`}
-                      className="muted text-xs underline"
+                      className="text-stone-500 text-xs underline"
                     >
                       Configure agent →
                     </Link>
@@ -169,27 +169,27 @@ export default async function CoursePage({
             })}
           </ul>
         )}
-        <p className="muted text-xs mt-3">
+        <p className="text-stone-500 text-xs mt-3">
           {assignments.length} published assignment{assignments.length === 1 ? "" : "s"}.
           Install paints a branded EHS card into the Canvas assignment description;
           re-install is idempotent and uninstall strips the block cleanly.
         </p>
       </section>
 
-      <section className="bg-white border border-light-blue rounded p-5">
+      <section className="bg-white border border-stone-200 rounded p-5">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="heading text-lg">Roster</h2>
+          <h2 className="font-medium text-ink text-lg">Roster</h2>
           <RefreshRosterButton canvasCourseId={canvasCourseId} />
         </div>
 
         {rosterStudents.length === 0 ? (
-          <p className="text-sm muted">
+          <p className="text-sm text-stone-500">
             No roster synced yet. Refresh from Canvas to populate. Student
             identifiers are anonymized at sync time; raw names never leave
             the teacher&apos;s browser session.
           </p>
         ) : (
-          <p className="text-sm muted">
+          <p className="text-sm text-stone-500">
             {rosterStudents.length} student{rosterStudents.length === 1 ? "" : "s"} synced
             {roster?.last_synced_at && (
               <> · last synced {new Date(roster.last_synced_at).toLocaleString()}</>

@@ -49,14 +49,14 @@ export function CanvasCommentToggle({
           {enabled ? (
             <>
               <span className="font-medium">Posting Canvas comments</span>{" "}
-              <span className="muted">
+              <span className="text-stone-500">
                 — draft comment posts after each completed exam
               </span>
             </>
           ) : (
             <>
               <span className="font-medium">Canvas comments disabled</span>{" "}
-              <span className="muted">
+              <span className="text-stone-500">
                 — Drive doc still saves, no comment posts
               </span>
             </>

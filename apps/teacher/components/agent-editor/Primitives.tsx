@@ -25,7 +25,7 @@ export function Field({
   return (
     <div>
       <label className="block text-sm font-medium mb-1">{label}</label>
-      {hint && <p className="muted text-xs mb-2">{hint}</p>}
+      {hint && <p className="text-stone-500 text-xs mb-2">{hint}</p>}
       {children}
     </div>
   );
@@ -85,7 +85,7 @@ export function MoveButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+      className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
     >
       {label}
     </button>
@@ -110,7 +110,7 @@ export function DeleteButton({
       onClick={() => {
         if (window.confirm(confirm)) onConfirm();
       }}
-      className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+      className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-xs text-red-700 hover:bg-red-50"
     >
       {label}
     </button>
@@ -149,7 +149,7 @@ export function InheritIndicator({
       {isOverriding ? (
         <>
           <span className="text-yellow-800">● overrides preset</span>
-          <span className="muted">
+          <span className="text-stone-500">
             preset: <span className="italic">{presetLabel}</span>
           </span>
           {resetField && (
@@ -169,14 +169,14 @@ export function InheritIndicator({
                   return resetField(fd);
                 });
               }}
-              className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-2 py-0.5 text-xs"
             >
               reset to default
             </button>
           )}
         </>
       ) : (
-        <span className="muted">
+        <span className="text-stone-500">
           inherits from preset: <span className="italic">{presetLabel}</span>
         </span>
       )}

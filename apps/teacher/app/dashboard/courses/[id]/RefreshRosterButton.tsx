@@ -34,10 +34,10 @@ export function RefreshRosterButton({
 
   return (
     <div className="flex items-center gap-3">
-      <button onClick={onClick} disabled={pending} className="inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed">
+      <button onClick={onClick} disabled={pending} className="inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-sm font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed">
         {pending ? "Syncing…" : "Refresh roster from Canvas"}
       </button>
-      {status && <span className="muted text-xs">{status}</span>}
+      {status && <span className="text-stone-500 text-xs">{status}</span>}
     </div>
   );
 }

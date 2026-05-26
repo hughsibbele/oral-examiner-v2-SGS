@@ -67,7 +67,7 @@ export function CustomTemplateRow({
   }
 
   return (
-    <li className="rounded border border-light-blue bg-white">
+    <li className="rounded border border-stone-200 bg-white">
       <div className="flex items-baseline justify-between gap-3 p-3">
         <button
           type="button"
@@ -76,7 +76,7 @@ export function CustomTemplateRow({
         >
           <Chevron open={open} />
           <span className="font-medium text-sm truncate">{template.name}</span>
-          <span className="muted text-xs whitespace-nowrap">
+          <span className="text-stone-500 text-xs whitespace-nowrap">
             {template.presetName ? `· based on ${template.presetName}` : ""}
             {template.overrideCount > 0 && (
               <> · {template.overrideCount} override{template.overrideCount === 1 ? "" : "s"}</>
@@ -109,22 +109,22 @@ export function CustomTemplateRow({
         </div>
       </div>
       {open && (
-        <div className="border-t border-light-blue p-3 space-y-3 bg-paper">
+        <div className="border-t border-stone-200 p-3 space-y-3 bg-stone-50">
           <form onSubmit={onRename} className="flex items-end gap-2">
             <input type="hidden" name="id" value={template.id} />
             <div className="flex-1">
-              <label className="block text-xs muted mb-1">Rename</label>
+              <label className="block text-xs text-stone-500 mb-1">Rename</label>
               <input
                 name="name"
                 defaultValue={template.name}
                 required
-                className="w-full border border-light-blue rounded px-3 py-1.5 text-sm"
+                className="w-full border border-stone-300 rounded px-3 py-1.5 text-sm"
               />
             </div>
             <button
               type="submit"
               disabled={pending}
-              className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-xs disabled:opacity-50"
             >
               {pending ? "Saving…" : "Rename"}
             </button>
@@ -132,7 +132,7 @@ export function CustomTemplateRow({
 
           {bindings.length > 0 ? (
             <div>
-              <div className="text-xs muted mb-1">Used by:</div>
+              <div className="text-xs text-stone-500 mb-1">Used by:</div>
               <ul className="space-y-0.5">
                 {bindings.map((b) => (
                   <li
@@ -145,7 +145,7 @@ export function CustomTemplateRow({
                     >
                       {b.assignment_name ?? b.canvas_assignment_id}
                     </Link>
-                    <span className="muted">
+                    <span className="text-stone-500">
                       ({b.course_name ?? b.canvas_course_id})
                     </span>
                   </li>
@@ -153,7 +153,7 @@ export function CustomTemplateRow({
               </ul>
             </div>
           ) : (
-            <p className="text-xs muted">
+            <p className="text-xs text-stone-500">
               Not yet attached to any assignment. Pick this template from an
               assignment configure page.
             </p>
@@ -173,7 +173,7 @@ function Chevron({ open }: { open: boolean }) {
       width="12"
       height="12"
       viewBox="0 0 20 20"
-      className={`shrink-0 muted transition-transform ${open ? "rotate-90" : ""}`}
+      className={`shrink-0 text-stone-500 transition-transform ${open ? "rotate-90" : ""}`}
     >
       <path
         d="M7 5l6 5-6 5"

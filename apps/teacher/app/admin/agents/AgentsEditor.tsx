@@ -189,7 +189,7 @@ function AgentCard({
         }`}
       >
         <div className="flex items-baseline gap-3 flex-wrap">
-          <h2 className="heading text-2xl">{persona.name}</h2>
+          <h2 className="font-medium text-ink text-2xl">{persona.name}</h2>
           {isDirty && (
             <span
               className="text-xs font-medium text-yellow-800 bg-yellow-100 border border-yellow-300 rounded px-1.5 py-0.5"
@@ -198,7 +198,7 @@ function AgentCard({
               ● Unsaved changes
             </span>
           )}
-          <span className="muted text-xs">
+          <span className="text-stone-500 text-xs">
             {totalSelected} question{totalSelected === 1 ? "" : "s"} · ~
             <span className={summaryOverCap ? "text-red-700 font-medium" : ""}>
               {summaryEstimateMin} min
@@ -206,20 +206,20 @@ function AgentCard({
             {" · "}
             {persona.follow_up_depth} depth
           </span>
-          <span className="muted text-xs ml-auto group-open:hidden">
+          <span className="text-stone-500 text-xs ml-auto group-open:hidden">
             ▸ click to expand
           </span>
-          <span className="muted text-xs ml-auto hidden group-open:inline">
+          <span className="text-stone-500 text-xs ml-auto hidden group-open:inline">
             ▾ collapse
           </span>
         </div>
         {persona.description && (
-          <p className="muted text-sm mt-1">{persona.description}</p>
+          <p className="text-stone-500 text-sm mt-1">{persona.description}</p>
         )}
       </summary>
 
       <div ref={bodyRef} className="space-y-5 mt-5">
-        <p className="muted text-xs">
+        <p className="text-stone-500 text-xs">
           Persona updated {new Date(persona.updated_at).toLocaleDateString()}
           {qset && (
             <>
@@ -306,8 +306,8 @@ function AgentCard({
             tagStatus={tagStatus}
           />
         ) : (
-          <div className="bg-white border border-light-blue rounded p-5">
-            <p className="text-sm muted">
+          <div className="bg-white border border-stone-200 rounded p-5">
+            <p className="text-sm text-stone-500">
               No default question set linked. Edit the persona row in SQL to set{" "}
               <code>default_question_set_id</code>.
             </p>

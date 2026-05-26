@@ -151,18 +151,18 @@ export default async function AssignmentConfigurePage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/dashboard" className="muted text-sm">
+        <Link href="/dashboard" className="text-stone-500 text-sm">
           ← Dashboard
         </Link>
-        <h1 className="heading text-2xl mt-2">{assignment.name}</h1>
-        <p className="muted text-sm mt-1">Canvas assignment {canvasAssignmentId}</p>
+        <h1 className="font-medium text-ink text-2xl mt-2">{assignment.name}</h1>
+        <p className="text-stone-500 text-sm mt-1">Canvas assignment {canvasAssignmentId}</p>
       </div>
 
-      <section className="bg-white border border-light-blue rounded p-5">
+      <section className="bg-white border border-stone-200 rounded p-5">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="heading text-lg">Agent template</h2>
+          <h2 className="font-medium text-ink text-lg">Agent template</h2>
           {binding && (
-            <span className="text-xs muted">
+            <span className="text-xs text-stone-500">
               Student URL: <code>/exam/{binding.exam_token.slice(0, 8)}…</code>
             </span>
           )}
@@ -181,7 +181,7 @@ export default async function AssignmentConfigurePage({
         <section className="bg-white border border-stone-200 rounded p-4 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">Preview this agent</p>
-            <p className="text-xs muted mt-0.5">
+            <p className="text-xs text-stone-500 mt-0.5">
               Run a live Gemini conversation as if you were the student (burns
               ~$0.17 per session).
             </p>
@@ -199,9 +199,9 @@ export default async function AssignmentConfigurePage({
         </section>
       )}
 
-      <section className="bg-white border border-light-blue rounded p-5 space-y-3">
+      <section className="bg-white border border-stone-200 rounded p-5 space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="heading text-lg">Canvas card</h2>
+          <h2 className="font-medium text-ink text-lg">Canvas card</h2>
           <InstallCardButton
             canvasCourseId={canvasCourseId}
             canvasAssignmentId={canvasAssignmentId}
@@ -209,7 +209,7 @@ export default async function AssignmentConfigurePage({
             agentAssigned={current !== null}
           />
         </div>
-        <p className="text-sm muted">
+        <p className="text-sm text-stone-500">
           {installed
             ? "The branded EHS oral-exam card is in this assignment's description. Students click it to land on the exam."
             : "Installs a branded card into the Canvas assignment description; re-install is idempotent. Card and agent are paired — uninstalling removes both."}

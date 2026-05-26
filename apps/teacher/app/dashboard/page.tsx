@@ -250,23 +250,12 @@ export default async function DashboardPage() {
   }, null);
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-4xl space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-medium text-ink">Your courses</h1>
-          <p className="muted text-sm mt-1">
-            {teacher?.display_name} · {teacher?.email}
-          </p>
-        </div>
+        <h1 className="text-xl font-medium text-ink">Your courses</h1>
         <form action={refreshFromDashboard} className="flex items-center gap-2">
           <SyncIndicator lastSyncedAt={lastSyncedAt} />
           <RefreshButton />
-          <Link
-            href="/dashboard/canvas"
-            className="muted text-xs underline hover:no-underline"
-          >
-            Canvas settings →
-          </Link>
         </form>
       </div>
 
@@ -322,20 +311,20 @@ function OtherCoursesSection({
   const terms = Array.from(byTerm.entries()).sort(([a], [b]) => b.localeCompare(a));
 
   return (
-    <details className="mt-8 rounded border border-light-blue bg-paper text-sm">
+    <details className="mt-8 rounded border border-stone-200 bg-stone-50 text-sm">
       <summary className="cursor-pointer list-none px-4 py-2.5 text-ink hover:bg-white">
         <span className="inline-flex items-center gap-2">
-          <span className="muted">▸</span>
+          <span className="text-stone-500">▸</span>
           Other courses ({total} course{total === 1 ? "" : "s"})
         </span>
       </summary>
-      <div className="space-y-4 border-t border-light-blue px-4 py-3">
+      <div className="space-y-4 border-t border-stone-200 px-4 py-3">
         {emptyActive.length > 0 && (
           <div>
-            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide muted">
+            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-stone-500">
               Active term · no assignments yet
             </div>
-            <p className="mb-1.5 text-[11px] muted">
+            <p className="mb-1.5 text-[11px] text-stone-500">
               Hidden by default since there&apos;s nothing to install on. Add an
               assignment in Canvas, then click Refresh.
             </p>
@@ -343,7 +332,7 @@ function OtherCoursesSection({
               {emptyActive.map((g) => (
                 <li
                   key={g.course.canvas_course_id}
-                  className="truncate text-xs muted"
+                  className="truncate text-xs text-stone-500"
                 >
                   {g.course.course_code && (
                     <span className="mr-1.5 font-semibold text-maroon">
@@ -358,10 +347,10 @@ function OtherCoursesSection({
         )}
         {terms.length > 0 && (
           <div>
-            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide muted">
+            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-stone-500">
               Previous terms
             </div>
-            <p className="mb-2 text-[11px] muted">
+            <p className="mb-2 text-[11px] text-stone-500">
               Assignments aren&apos;t synced for these — Refresh skips them to
               save Canvas API budget. Listed here in case you need a quick
               lookup.
@@ -369,18 +358,18 @@ function OtherCoursesSection({
             <div className="space-y-3">
               {terms.map(([termName, list]) => (
                 <div key={termName}>
-                  <div className="mb-1 text-[10px] font-medium uppercase tracking-wide muted">
+                  <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-stone-500">
                     {termName}
                   </div>
                   <ul className="space-y-0.5">
                     {list.map((g) => (
                       <li
                         key={g.course.canvas_course_id}
-                        className="truncate text-xs muted"
+                        className="truncate text-xs text-stone-500"
                       >
                         {g.course.name}
                         {g.course.course_code && (
-                          <span className="ml-1.5 font-mono muted">
+                          <span className="ml-1.5 font-mono text-stone-500">
                             ({g.course.course_code})
                           </span>
                         )}
@@ -399,9 +388,9 @@ function OtherCoursesSection({
 
 function FirstSyncPrompt() {
   return (
-    <div className="rounded border border-light-blue bg-white p-6 text-center text-sm">
-      <h2 className="heading text-lg">No courses cached yet</h2>
-      <p className="mt-2 muted">
+    <div className="rounded border border-stone-200 bg-white p-6 text-center text-sm">
+      <h2 className="font-medium text-ink text-lg">No courses cached yet</h2>
+      <p className="mt-2 text-stone-500">
         Click <strong>Refresh from Canvas</strong> above to pull your
         active-term courses and their assignments.
       </p>
@@ -415,8 +404,8 @@ function ConnectCanvasPrompt({ name }: { name: string }) {
       <div>
         <h1 className="text-xl font-medium text-ink">Welcome{name && `, ${name}`}.</h1>
       </div>
-      <div className="bg-white border border-light-blue rounded p-5">
-        <h2 className="heading text-lg mb-2">Connect Canvas</h2>
+      <div className="bg-white border border-stone-200 rounded p-5">
+        <h2 className="font-medium text-ink text-lg mb-2">Connect Canvas</h2>
         <p className="text-sm mb-3">
           OE v2 needs a Canvas API token to read your courses + assignments and
           (eventually) post oral-defense submissions on the student&apos;s

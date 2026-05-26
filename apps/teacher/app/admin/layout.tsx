@@ -30,13 +30,13 @@ export default async function AdminLayout({
           }
         />
         <main className="max-w-3xl mx-auto flex-1 px-6 py-12">
-          <h1 className="heading text-2xl mb-4">Admin access required</h1>
+          <h1 className="font-medium text-ink text-2xl mb-4">Admin access required</h1>
           <p className="text-sm leading-relaxed">
             This page is restricted to ecosystem admins. You&apos;re signed in as{" "}
             <span className="font-medium">{teacherResult.teacher.email}</span>.
           </p>
           {bootstrap.reason && (
-            <p className="muted text-xs mt-4">Bootstrap diagnostic: {bootstrap.reason}</p>
+            <p className="text-stone-500 text-xs mt-4">Bootstrap diagnostic: {bootstrap.reason}</p>
           )}
         </main>
       </div>

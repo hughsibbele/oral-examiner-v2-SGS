@@ -100,8 +100,8 @@ export default async function AdminAgentsPage() {
     .maybeSingle();
   if (envelopeErr) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
-        <h1 className="heading text-2xl mb-2">Agents</h1>
+      <div className="bg-white border border-stone-200 rounded p-5">
+        <h1 className="font-medium text-ink text-2xl mb-2">Agents</h1>
         <p className="text-sm">Failed to load safety envelope: {envelopeErr.message}</p>
       </div>
     );
@@ -126,8 +126,8 @@ export default async function AdminAgentsPage() {
     .order("purpose");
   if (systemPromptsErr) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
-        <h1 className="heading text-2xl mb-2">Agents</h1>
+      <div className="bg-white border border-stone-200 rounded p-5">
+        <h1 className="font-medium text-ink text-2xl mb-2">Agents</h1>
         <p className="text-sm">Failed to load system prompts: {systemPromptsErr.message}</p>
       </div>
     );
@@ -142,8 +142,8 @@ export default async function AdminAgentsPage() {
     .order("name");
   if (presetsErr) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
-        <h1 className="heading text-2xl mb-2">Agents</h1>
+      <div className="bg-white border border-stone-200 rounded p-5">
+        <h1 className="font-medium text-ink text-2xl mb-2">Agents</h1>
         <p className="text-sm">Failed to load personas: {presetsErr.message}</p>
       </div>
     );
@@ -158,7 +158,7 @@ export default async function AdminAgentsPage() {
       : { data: [], error: null };
   if (qsetsErr) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
+      <div className="bg-white border border-stone-200 rounded p-5">
         <p className="text-sm">Failed to load question sets: {qsetsErr.message}</p>
       </div>
     );
@@ -178,7 +178,7 @@ export default async function AdminAgentsPage() {
       : { data: [], error: null };
   if (bucketsErr) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
+      <div className="bg-white border border-stone-200 rounded p-5">
         <p className="text-sm">Failed to load buckets: {bucketsErr.message}</p>
       </div>
     );
@@ -197,7 +197,7 @@ export default async function AdminAgentsPage() {
       : { data: [], error: null };
   if (questionsErr) {
     return (
-      <div className="bg-white border border-light-blue rounded p-5">
+      <div className="bg-white border border-stone-200 rounded p-5">
         <p className="text-sm">Failed to load questions: {questionsErr.message}</p>
       </div>
     );
@@ -235,22 +235,22 @@ export default async function AdminAgentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="heading text-2xl">Agents</h1>
-        <p className="muted text-sm mt-1">
+        <h1 className="font-medium text-ink text-2xl">Agents</h1>
+        <p className="text-stone-500 text-sm mt-1">
           Each system agent pairs a <strong>persona</strong> (voice, style,
           boundaries, examination flow) with a <strong>default question
           bank</strong> the agent draws from at session start. The server picks{" "}
           <code>select_count</code> questions from each bucket via crypto-RNG —
           the LLM is never asked to randomize.
         </p>
-        <p className="muted text-xs mt-2">
+        <p className="text-stone-500 text-xs mt-2">
           Edits here update the canonical defaults. Templates that already
           cloned an agent are unaffected; new templates pull the latest values.
         </p>
       </div>
 
       <div className="space-y-3">
-        <h2 className="heading text-lg">Universal — apply to every agent</h2>
+        <h2 className="font-medium text-ink text-lg">Universal — apply to every agent</h2>
         {envelope ? (
           <CollapsibleEditor
             title="Safety envelope"
@@ -261,7 +261,7 @@ export default async function AdminAgentsPage() {
             textareaRows={20}
           />
         ) : (
-          <div className="bg-white border border-light-blue rounded p-4 border-l-4 border-red-700">
+          <div className="bg-white border border-stone-200 rounded p-4 border-l-4 border-red-700">
             <p className="text-sm">
               No safety envelope row found. Re-run the seed migration.
             </p>
@@ -301,13 +301,13 @@ export default async function AdminAgentsPage() {
       </div>
 
       {/* Sticky agent picker */}
-      <nav className="sticky top-0 z-10 -mx-6 px-6 py-3 bg-paper border-b border-light-blue">
+      <nav className="sticky top-0 z-10 -mx-6 px-6 py-3 bg-paper border-b border-stone-200">
         <ul className="flex gap-3 flex-wrap text-sm">
           {agents.map((a) => (
             <li key={a.persona.id}>
               <a
                 href={`#agent-${a.persona.id}`}
-                className="px-3 py-1.5 border border-light-blue rounded no-underline text-ink hover:border-maroon"
+                className="px-3 py-1.5 border border-stone-200 rounded no-underline text-ink hover:border-maroon"
               >
                 {a.persona.name}
               </a>

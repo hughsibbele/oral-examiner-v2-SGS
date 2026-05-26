@@ -40,9 +40,9 @@ export async function SessionsList({
   const sessions = (rows ?? []) as SessionRow[];
   if (sessions.length === 0) {
     return (
-      <section className="bg-white border border-light-blue rounded p-5 space-y-2">
-        <h2 className="heading text-lg">Student sessions</h2>
-        <p className="text-sm muted">
+      <section className="bg-white border border-stone-200 rounded p-5 space-y-2">
+        <h2 className="font-medium text-ink text-lg">Student sessions</h2>
+        <p className="text-sm text-stone-500">
           No students have started this exam yet. Sessions show up here once
           students click the Canvas card and start.
         </p>
@@ -60,13 +60,13 @@ export async function SessionsList({
   );
 
   return (
-    <section className="bg-white border border-light-blue rounded p-5 space-y-3">
-      <h2 className="heading text-lg">Student sessions</h2>
-      <p className="text-sm muted">
+    <section className="bg-white border border-stone-200 rounded p-5 space-y-3">
+      <h2 className="font-medium text-ink text-lg">Student sessions</h2>
+      <p className="text-sm text-stone-500">
         Resetting a session lets the student retake the exam. Excluded rows
         stay for the audit trail.
       </p>
-      <ul className="divide-y divide-light-blue text-sm">
+      <ul className="divide-y divide-stone-100 text-sm">
         {sessions.map((s) => {
           const student = studentById.get(s.student_id);
           return (
@@ -75,7 +75,7 @@ export async function SessionsList({
                 <div className="font-medium">
                   {student?.display_name ?? "(unknown student)"}
                 </div>
-                <div className="muted text-xs">
+                <div className="text-stone-500 text-xs">
                   {formatState(s)} · {formatTime(s)}
                 </div>
               </div>
@@ -94,7 +94,7 @@ export async function SessionsList({
                   />
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-1.5 rounded font-medium border border-light-blue text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3 py-1"
+                    className="inline-flex items-center gap-1.5 rounded font-medium border border-stone-200 text-ink transition-colors hover:border-maroon hover:text-maroon disabled:opacity-40 disabled:cursor-not-allowed text-xs px-3 py-1"
                   >
                     Reset
                   </button>
