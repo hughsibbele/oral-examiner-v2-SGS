@@ -6,6 +6,7 @@ import { isActiveTerm } from "@/lib/sync/active-term";
 import { refreshAllCanvas } from "./actions";
 import { CourseAccordion } from "./CourseAccordion";
 import { RefreshButton, SyncIndicator } from "./RefreshButton";
+import { TeacherGuide } from "./TeacherGuide";
 import type {
   AgentBindingSummary,
   AssignmentRowDB,
@@ -252,7 +253,10 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-xl font-medium text-ink">Your courses</h1>
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-xl font-medium text-ink">Your courses</h1>
+          <TeacherGuide />
+        </div>
         <form action={refreshFromDashboard} className="flex items-center gap-2">
           <SyncIndicator lastSyncedAt={lastSyncedAt} />
           <RefreshButton />
