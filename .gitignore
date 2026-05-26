@@ -17,3 +17,5 @@ dist/
 
 # Supabase CLI scratch
 supabase/.temp/
+
+next-env.d.ts
