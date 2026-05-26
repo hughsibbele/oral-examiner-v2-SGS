@@ -72,7 +72,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase
       .from("canvas_course_cache")
-      .select("canvas_course_id, payload, last_synced_at"),
+      .select("canvas_course_id, payload, last_synced_at, short_name"),
     supabase
       .from("canvas_assignment_cache")
       .select("canvas_assignment_id, canvas_course_id, payload, last_synced_at"),
@@ -223,6 +223,7 @@ export default async function DashboardPage() {
         course: {
           ...row.payload,
           canvas_course_id: row.canvas_course_id,
+          short_name: row.short_name,
         },
         assignments: courseAssignments,
         installedCount,

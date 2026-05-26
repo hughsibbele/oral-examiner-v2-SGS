@@ -69,18 +69,21 @@ export type Database = {
           canvas_course_id: string
           last_synced_at: string
           payload: Json
+          short_name: string | null
           teacher_id: string
         }
         Insert: {
           canvas_course_id: string
           last_synced_at?: string
           payload: Json
+          short_name?: string | null
           teacher_id: string
         }
         Update: {
           canvas_course_id?: string
           last_synced_at?: string
           payload?: Json
+          short_name?: string | null
           teacher_id?: string
         }
         Relationships: [

@@ -485,6 +485,30 @@ export async function uninstallOralExamCard({
   }
 }
 
+export async function updateCourseNickname(
+  canvasCourseId: string,
+  shortName: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const canvas = await getCanvasConfigForTeacher();
+  if (!canvas) {
+    return { ok: false, error: "Not authenticated." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("canvas_course_cache")
+    .update({ short_name: shortName || null })
+    .eq("teacher_id", canvas.teacherId)
+    .eq("canvas_course_id", canvasCourseId);
+
+  if (error) {
+    return { ok: false, error: `Update failed: ${error.message}` };
+  }
+
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 // cloneAgentToTemplate / changeAgentForTemplate removed in M2b.5b dashboard
 // refactor (2026-05-18). Custom templates are now standalone, created via
 // cloneAgentTemplate() in /dashboard/agents/actions.ts; per-assignment

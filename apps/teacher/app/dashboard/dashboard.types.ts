@@ -26,6 +26,7 @@ export type CourseRowDB = {
   canvas_course_id: string;
   payload: CoursePayload;
   last_synced_at: string;
+  short_name: string | null;
 };
 
 export type AssignmentRowDB = {
@@ -85,7 +86,7 @@ export type RosterSummary = {
 };
 
 export type CourseGroup = {
-  course: CoursePayload & { canvas_course_id: string };
+  course: CoursePayload & { canvas_course_id: string; short_name?: string | null };
   assignments: AssignmentWithStatus[];
   installedCount: number;
   /** Bindings (preset or template) — used for "N configured" badge. */

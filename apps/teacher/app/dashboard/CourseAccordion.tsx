@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { refreshRoster } from "./actions";
+import { refreshRoster, updateCourseNickname } from "./actions";
 import {
   bulkInstallExamCards,
   bulkUninstallExamCards,
@@ -50,12 +50,27 @@ export function CourseAccordion({
   teacherTemplates: TeacherTemplateOption[];
 }) {
   const { course, assignments, installedCount, boundCount, roster } = group;
+  const router = useRouter();
   const [open, setOpen] = useSessionFlag(
     `dashboard:course-${course.canvas_course_id}:open`,
     false,
   );
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editingNickname, setEditingNickname] = useState(false);
+
+  function saveNickname(value: string) {
+    setEditingNickname(false);
+    const trimmed = value.trim();
+    // Don't save if nothing changed
+    if (trimmed === (course.short_name ?? "")) return;
+    updateCourseNickname(course.canvas_course_id, trimmed).then(() => {
+      router.refresh();
+    });
+  }
+  function cancelNicknameEdit() {
+    setEditingNickname(false);
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -96,11 +111,45 @@ export function CourseAccordion({
         <div className="flex min-w-0 items-center gap-2">
           <Chevron open={open} />
           <div className="min-w-0">
-            <div className="truncate text-sm text-ink">
-              {course.course_code && (
-                <span className="mr-2 font-semibold text-maroon">{course.course_code}</span>
+            <div className="flex items-center gap-1 truncate text-sm text-ink">
+              {editingNickname ? (
+                <input
+                  autoFocus
+                  defaultValue={course.short_name ?? ""}
+                  placeholder="Short name…"
+                  onBlur={(e) => saveNickname(e.target.value.trim())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveNickname(e.currentTarget.value.trim());
+                    if (e.key === "Escape") cancelNicknameEdit();
+                  }}
+                  className="w-24 rounded border border-stone-300 px-1.5 py-0.5 text-xs focus:border-maroon focus:outline-none focus:ring-1 focus:ring-maroon"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <>
+                  {course.short_name ? (
+                    <span className="mr-2 font-semibold text-maroon">{course.short_name}</span>
+                  ) : course.course_code ? (
+                    <span className="mr-2 font-semibold text-maroon">{course.course_code}</span>
+                  ) : null}
+                </>
               )}
-              {course.name}
+              {!editingNickname && (
+                <>
+                  <span className="truncate">{course.name}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingNickname(true);
+                    }}
+                    className="ml-1 shrink-0 rounded p-0.5 text-stone-400 hover:text-maroon"
+                    title="Edit short name"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                  </button>
+                </>
+              )}
               {isInactive && (
                 <span className="ml-2 text-[10px] font-normal uppercase tracking-wide text-stone-500">
                   {course.workflow_state}
