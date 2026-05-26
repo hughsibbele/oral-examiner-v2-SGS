@@ -82,7 +82,7 @@ export type GoogleProviderTokens = {
  * captured from `auth.exchangeCodeForSession`. We persist them so server-side
  * Drive calls (Picker token mint, Save-to-Drive, PDF intake) can refresh
  * without a fresh browser sign-in. Google only issues a refresh_token on first
- * consent — `prompt=consent` in LoginForm forces it. If this sign-in didn't
+ * consent — `prompt=consent` in the /auth/login route forces it. If this sign-in didn't
  * yield a refresh_token, we preserve whatever's already on the row.
  */
 export async function ensureTeacherForUser(

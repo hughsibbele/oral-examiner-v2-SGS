@@ -55,6 +55,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error || !data.session) {
+    console.error("[auth/callback] exchangeCodeForSession failed:", error?.message ?? "no session returned", { status: error?.status, code: error?.code });
     return redirectWithCookies(`${origin}/login?error=exchange_failed`, captured);
   }
 
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
   if (isStudentPath) {
     // Domain gate students to @episcopalhighschool.org. Mirrors the
     // teacher-side check in ensureTeacherForUser. The Google `hd` hint in
-    // LoginForm restricts the account picker, but a determined user can
+    // the /auth/login route handler restricts the account picker, but a determined user can
     // bypass it via direct OAuth URL — this is the server-side enforcement.
     // Roster check (must be enrolled in the specific course) happens later
     // in /exam/[token]'s resolver; this catches the wrong-domain case early
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
   // Google OAuth tokens come back on the Supabase session — capture them so
   // server-side Drive calls (Picker token, Save-to-Drive, PDF intake) work
   // without a fresh sign-in. refresh_token only on first consent / when
-  // prompt=consent is set on the sign-in (it is — see LoginForm).
+  // prompt=consent is set on the sign-in (it is — see /auth/login route).
   try {
     await ensureTeacherForUser(
       {
@@ -121,7 +122,17 @@ export async function GET(request: Request) {
     return redirectWithCookies(url.toString(), captured);
   }
 
-  return redirectWithCookies(`${origin}${next}`, captured);
+  const response = redirectWithCookies(`${origin}${next}`, captured);
+  if (data.session.provider_refresh_token) {
+    response.cookies.set("_grt", "1", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 365 * 24 * 60 * 60,
+      path: "/",
+    });
+  }
+  return response;
 }
 
 function redirectWithCookies(
