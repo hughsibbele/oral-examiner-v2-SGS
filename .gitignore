@@ -19,3 +19,4 @@ dist/
 supabase/.temp/
 
 next-env.d.ts
+.turbo
