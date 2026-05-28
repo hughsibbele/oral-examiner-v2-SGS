@@ -9,6 +9,14 @@
 -- (loadTemplateContext checks locked_at); the clone-on-edit UI ships in
 -- the same commit's TypeScript side.
 
+-- DROP before redefine: the prior version of this function declared its OUT
+-- column as `archived_prior_id`; this redefinition uses `archived_id`. PG
+-- 42P13 ("cannot change return type of existing function") fires on a bare
+-- CREATE OR REPLACE across that rename, so we drop first. No callers read
+-- the field by name (only `data.length` is consulted in start-exam.ts), so
+-- the rename is caller-safe.
+drop function if exists begin_exam_session(text, uuid, jsonb);
+
 create or replace function begin_exam_session(
   p_canvas_assignment_id text,
   p_student_id uuid,
